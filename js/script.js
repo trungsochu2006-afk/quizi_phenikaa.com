@@ -283,8 +283,26 @@ function initQuizGame() {
   showQuizSubTab("quiz-play");
   updateLiveScoreBar();
   renderQuestion();
-}
 
+  // 🌟 GHI NHẬN LÊN HỆ THỐNG: Học viên này đang bắt đầu làm bài
+  if (
+    typeof currentStudent !== "undefined" &&
+    currentStudent &&
+    currentStudent.id
+  ) {
+    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).set({
+      name: currentStudent.name,
+      id: currentStudent.id,
+      subject:
+        typeof selectedSubject !== "undefined" ? selectedSubject : "Chưa rõ",
+      chapter:
+        typeof selectedChapter !== "undefined" ? selectedChapter : "Chưa rõ",
+      currentQuestion: 1,
+      currentScore: "0.00",
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+    });
+  }
+}
 // Chức năng: Tính toán và cập nhật điểm số trực tiếp cùng thống kê số câu đúng trên tổng số câu hỏi theo thời gian thực.
 function updateLiveScoreBar() {
   const totalQ = originalQuestions.length;
@@ -297,7 +315,6 @@ function updateLiveScoreBar() {
     `(${correctCount}/${totalQ})`;
 }
 
-// Chức năng: Hiển thị nội dung câu hỏi hiện tại, các lựa chọn đáp án A, B, C, D và trạng thái làm bài lên giao diện.
 function renderQuestion() {
   let activeList = isRepeatMode ? wrongQuestionsQueue : questionsPool;
   let totalQuestions = activeList.length;
@@ -325,6 +342,21 @@ function renderQuestion() {
     showAnswerStatus(currentQ, userResponses[currentQ.id]);
   }
   document.getElementById("prev-btn").disabled = currentQuestionIdx === 0;
+
+  // 🌟 ĐOẠN NÀY ĐÃ THÊM: Cập nhật tiến độ câu hỏi và điểm số real-time lên Firebase cho Admin
+  if (
+    typeof currentStudent !== "undefined" &&
+    currentStudent &&
+    currentStudent.id
+  ) {
+    let liveScoreVal = document.getElementById("live-score-val")
+      ? document.getElementById("live-score-val").innerText
+      : "0.00";
+    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).update({
+      currentQuestion: currentQuestionIdx + 1,
+      currentScore: liveScoreVal,
+    });
+  }
 }
 
 // Chức năng: Xử lý đáp án người dùng chọn, kiểm tra đúng/sai, cộng trừ điểm số, phát âm thanh tương ứng và hiển thị màu sắc trạng thái đáp án.
@@ -419,6 +451,14 @@ function ketthucbaithi() {
 
   let exitBox = document.getElementById("emergency-exit-box");
   if (exitBox) exitBox.style.display = "none";
+  // 🌟 THÊM ĐOẠN NÀY VÀO ĐÂY ĐỂ XÓA TÊN KHỎI DANH SÁCH ĐANG LÀM BÀI KHI ĐÃ NỘP XONG
+  if (
+    typeof currentStudent !== "undefined" &&
+    currentStudent &&
+    currentStudent.id
+  ) {
+    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).remove();
+  }
 
   showQuizSubTab("quiz-result");
 
@@ -548,7 +588,9 @@ function showTab(tab) {
   }
 }
 // Chức năng: Lưu trữ hoặc cập nhật thành tích điểm số và thời gian làm bài của học viên vào LocalStorage để làm bảng xếp hạng.
+// Chức năng: Lưu trữ hoặc cập nhật thành tích điểm số và thời gian làm bài của học viên, giữ nguyên logic so sánh thành tích tốt nhất trên máy (localStorage) và đồng bộ đồng thời lên Firebase Database.
 function saveToLeaderboard(duration) {
+  // 1. Giữ nguyên logic xử lý LocalStorage như cũ
   let data = localStorage.getItem("quiz_leaderboard");
   let leaderboard = data ? JSON.parse(data) : [];
 
@@ -563,6 +605,8 @@ function saveToLeaderboard(duration) {
       item.chapter === selectedChapter,
   );
 
+  let recordToSave = null;
+
   if (existingRecordIndex !== -1) {
     let oldRecord = leaderboard[existingRecordIndex];
     let oldScore = oldRecord.score !== undefined ? oldRecord.score : 10;
@@ -575,9 +619,11 @@ function saveToLeaderboard(duration) {
       leaderboard[existingRecordIndex].score = currentScore;
       leaderboard[existingRecordIndex].correctCount = correctCount;
       leaderboard[existingRecordIndex].timestamp = Date.now();
+
+      recordToSave = leaderboard[existingRecordIndex];
     }
   } else {
-    leaderboard.push({
+    recordToSave = {
       name: currentStudent.name,
       id: currentStudent.id,
       subject: selectedSubject,
@@ -586,56 +632,107 @@ function saveToLeaderboard(duration) {
       score: currentScore,
       correctCount: correctCount,
       timestamp: Date.now(),
+    };
+    leaderboard.push(recordToSave);
+  }
+
+  // Lưu lại vào localStorage của trình duyệt
+  localStorage.setItem("quiz_leaderboard", JSON.stringify(leaderboard));
+
+  // 2. Bổ sung thêm phần đồng bộ lên Firebase Database để các tài khoản khác nhìn thấy chung bảng xếp hạng
+  if (recordToSave && currentStudent && currentStudent.id) {
+    let cleanId = currentStudent.id.trim();
+    // Tạo một nhánh riêng trên Firebase để lưu thành tích theo ID người dùng + Môn + Chương (tránh trùng lặp key)
+    let safeChapterKey = selectedChapter.replace(/[.#$\/\[\]]/g, "_");
+    let safeSubjectKey = selectedSubject.replace(/[.#$\/\[\]]/g, "_");
+
+    let firebaseRef = database.ref(
+      `leaderboards/${safeSubjectKey}_${safeChapterKey}_${cleanId}`,
+    );
+
+    // Kiểm tra và cập nhật lên Firebase nếu điểm cao hơn hoặc thời gian tốt hơn
+    firebaseRef.once("value", (snapshot) => {
+      let fbData = snapshot.val();
+      if (
+        !fbData ||
+        currentScore > fbData.score ||
+        (currentScore === fbData.score && duration < fbData.duration)
+      ) {
+        firebaseRef.set(recordToSave);
+      }
     });
   }
-  localStorage.setItem("quiz_leaderboard", JSON.stringify(leaderboard));
 }
 
 // Chức năng: Lọc, sắp xếp dữ liệu bảng xếp hạng theo điểm số và thời gian của môn học hiện tại, sau đó hiển thị danh sách lên giao diện.
+// Chức năng: Lọc, sắp xếp dữ liệu bảng xếp hạng từ Firebase theo môn học hiện tại, sau đó hiển thị danh sách lên giao diện cho toàn bộ người dùng.
 function showLeaderboardTab() {
   document.getElementById("leaderboard-title").innerText =
     `BẢNG XẾP HẠNG MÔN: ${selectedSubject.toUpperCase()}`;
 
-  let data = localStorage.getItem("quiz_leaderboard");
-  let leaderboard = data ? JSON.parse(data) : [];
-  let subjectFiltered = leaderboard.filter(
-    (item) => item.subject === selectedSubject,
-  );
-
-  // Sắp xếp: Điểm cao trước, nếu bằng điểm thì xét thời gian nhanh hơn
-  subjectFiltered.sort((a, b) => {
-    let scoreA = a.score !== undefined ? a.score : 10;
-    let scoreB = b.score !== undefined ? b.score : 10;
-    if (scoreB !== scoreA) {
-      return scoreB - scoreA;
-    }
-    return a.duration - b.duration;
-  });
-
   let tbody = document.getElementById("leaderboard-data");
-  tbody.innerHTML = "";
+  tbody.innerHTML = `<tr><td colspan="5" style="color:#777;">Đang tải bảng xếp hạng từ hệ thống...</td></tr>`;
 
-  if (subjectFiltered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:#777;">Chưa có dữ liệu xếp hạng cho môn này!</td></tr>`;
-  } else {
-    subjectFiltered.forEach((student, index) => {
-      let mssvBaoMat = student.id ? student.id.substring(0, 3) + "***" : "";
-      let diemSo = student.score !== undefined ? student.score : "10.00";
-      let soCau =
-        student.correctCount !== undefined
-          ? student.correctCount
-          : originalQuestions.length;
+  showQuizSubTab("quiz-leaderboard");
 
-      tbody.innerHTML += `<tr>
+  // Lấy dữ liệu từ Firebase Realtime Database tại nhánh leaderboards
+  database.ref("leaderboards").once("value", (snapshot) => {
+    let rawData = snapshot.val();
+    let leaderboard = [];
+
+    if (rawData) {
+      // Chuyển đổi dữ liệu object từ Firebase thành mảng
+      Object.keys(rawData).forEach((key) => {
+        leaderboard.push(rawData[key]);
+      });
+    }
+
+    // Lọc theo môn học hiện tại
+    let subjectFiltered = leaderboard.filter(
+      (item) => item.subject === selectedSubject,
+    );
+
+    // Sắp xếp: Điểm cao trước, nếu bằng điểm thì xét thời gian nhanh hơn
+    subjectFiltered.sort((a, b) => {
+      let scoreA = a.score !== undefined ? a.score : 10;
+      let scoreB = b.score !== undefined ? b.score : 10;
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      return a.duration - b.duration;
+    });
+
+    tbody.innerHTML = "";
+
+    if (subjectFiltered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:#777;">Chưa có dữ liệu xếp hạng cho môn này!</td></tr>`;
+    } else {
+      subjectFiltered.forEach((student, index) => {
+        let mssvBaoMat = student.id ? student.id.substring(0, 3) + "***" : "";
+        let diemSo = student.score !== undefined ? student.score : "10.00";
+        // Nếu có giá trị số câu thì hiển thị, nếu không mặc định lấy theo số câu gốc hiện tại
+        let soCau =
+          student.correctCount !== undefined
+            ? student.correctCount
+            : typeof originalQuestions !== "undefined"
+              ? originalQuestions.length
+              : 0;
+
+        let tongSoCau =
+          typeof originalQuestions !== "undefined"
+            ? originalQuestions.length
+            : soCau;
+
+        tbody.innerHTML += `<tr>
               <td><b>${index + 1}</b></td>
               <td>${student.name}</td>
               <td>${mssvBaoMat}</td>
-              <td><span style="color:#0058f0; font-weight:bold;">${diemSo}đ</span> (${soCau}/${originalQuestions.length} câu)</td>
+              <td><span style="color:#0058f0; font-weight:bold;">${diemSo}đ</span> (${soCau}/${tongSoCau} câu)</td>
               <td><span style="color:#28a745; font-weight:bold;">${student.duration} giây</span> (${student.chapter})</td>
-            </tr>`;
-    });
-  }
-  showQuizSubTab("quiz-leaderboard");
+             </tr>`;
+      });
+    }
+  });
 }
 
 // Chức năng: Tắt âm thanh và điều hướng người dùng quay lại màn hình kết quả hoặc danh sách chương tùy thuộc vào trạng thái hoàn thành bài thi.
@@ -988,6 +1085,9 @@ database.ref("online_users").on("value", (snapshot) => {
     displayEl.innerText = count;
   }
 });
+// =========================================
+// 🛑 HÀM NỘP BÀI SỚM
+// =========================================
 function nopBaiSom() {
   if (confirm("Bạn có chắc chắn muốn nộp bài và xem kết quả không?")) {
     if (typeof countdownSound !== "undefined") {
@@ -996,4 +1096,260 @@ function nopBaiSom() {
     }
     ketthucbaithi();
   }
+}
+
+// =========================================
+// 📊 THỐNG KÊ ADMIN & BIỂU ĐỒ TRUY CẬP REAL-TIME
+// =========================================
+
+let myAccessChart = null;
+let globalAccessLogs = {}; // Biến lưu trữ dữ liệu cache từ Firebase
+
+// 1. KIỂM TRA QUYỀN ADMIN ĐỂ HIỆN/ẨN TAB THỐNG KÊ
+function checkAdminPermission() {
+  let adminBtn = document.getElementById("admin-stats-tab-btn");
+  if (!adminBtn) return;
+
+  if (
+    currentStudent &&
+    (currentStudent.id === "7277979906" ||
+      currentStudent.name === "trung_admin")
+  ) {
+    adminBtn.style.display = "inline-block";
+  } else {
+    adminBtn.style.display = "none";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(checkAdminPermission, 500);
+});
+
+// Móc vào hàm showTab để khi admin bấm vào tab thống kê thì load dữ liệu
+const oldShowTabFunc = window.showTab;
+window.showTab = function (tab) {
+  if (typeof oldShowTabFunc === "function") {
+    oldShowTabFunc(tab);
+  }
+  if (tab === "admin-stats") {
+    if (
+      !currentStudent ||
+      (currentStudent.id !== "7277979906" &&
+        currentStudent.name !== "trung_admin")
+    ) {
+      alert("Bạn không có quyền truy cập khu vực này!");
+      showTab("home");
+      return;
+    }
+    loadAdminStatisticsData();
+  }
+};
+
+// 2. LẮNG NGHE DỮ LIỆU REAL-TIME TỪ FIREBASE CHO TOÀN BỘ TAB THỐNG KÊ
+function loadAdminStatisticsData() {
+  // Lắng nghe real-time node 'user_access_logs' (tự động cập nhật khi có người truy cập mới)
+  database.ref("user_access_logs").on("value", (snapshot) => {
+    globalAccessLogs = snapshot.val() || {};
+    let now = Date.now();
+    let oneHourAgo = now - 60 * 60 * 1000;
+    let fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    let oneDayAgo = now - 24 * 60 * 60 * 1000;
+    let thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    let threeMonthsAgo = now - 90 * 24 * 60 * 60 * 1000;
+
+    let count1h = 0,
+      count5h = 0,
+      count1d = 0,
+      count30d = 0,
+      count3m = 0;
+
+    Object.values(globalAccessLogs).forEach((log) => {
+      let time = log.timestamp || 0;
+      if (time >= oneHourAgo) count1h++;
+      if (time >= fiveHoursAgo) count5h++;
+      if (time >= oneDayAgo) count1d++;
+      if (time >= thirtyDaysAgo) count30d++;
+      if (time >= threeMonthsAgo) count3m++;
+    });
+
+    let el1h = document.getElementById("stat-1h");
+    let el5h = document.getElementById("stat-5h");
+    let el1d = document.getElementById("stat-1d");
+    let el30d = document.getElementById("stat-30d");
+    let el3m = document.getElementById("stat-3m");
+
+    if (el1h) el1h.innerText = count1h;
+    if (el5h) el5h.innerText = count5h;
+    if (el1d) el1d.innerText = count1d;
+    if (el30d) el30d.innerText = count30d;
+    if (el3m) el3m.innerText = count3m;
+
+    // Cập nhật lại biểu đồ ngay lập tức khi có dữ liệu mới đổ về
+    updateAccessChart();
+  });
+
+  // Lấy số lượng người đang online trực tuyến
+  database.ref("online_users").on("value", (snapshot) => {
+    let onlineNowEl = document.getElementById("stat-online-now");
+    if (onlineNowEl) {
+      onlineNowEl.innerText = snapshot.numChildren();
+    }
+  });
+
+  loadLiveActiveQuizUsers();
+}
+// 3. GHI NHẬN LƯỢT TRUY CẬP (Dùng Date.now() để nhận diện số liệu ngay lập tức)
+function logUserAccessActivity() {
+  // Lấy dữ liệu trực tiếp từ localStorage nếu biến toàn cục chưa sẵn sàng
+  let student =
+    currentStudent && currentStudent.id
+      ? currentStudent
+      : JSON.parse(localStorage.getItem("current_logged_student"));
+
+  if (!student || !student.id) return;
+
+  let logRef = database.ref("user_access_logs").push();
+  logRef.set({
+    userId: student.id.trim(),
+    name: student.name || "Học viên",
+    timestamp: Date.now(), // Dùng Date.now() để có số liệu dạng số ngay lập tức, không bị trễ server
+  });
+}
+
+// 4. HÀM VẼ VÀ CẬP NHẬT BIỂU ĐỒ ĐƯỜNG THEO BỘ LỌC (NGÀY / THÁNG / 3 THÁNG)
+function updateAccessChart() {
+  let filterSelect = document.getElementById("chart-time-filter");
+  if (!filterSelect) return;
+
+  let filterType = filterSelect.value; // Lấy giá trị: '1d', '30d', '3m'
+  let now = Date.now();
+
+  let intervalMs = 30 * 60 * 1000; // Mặc định 30 phút/mốc (cho ngày)
+  let totalSlots = 48; // 48 mốc trong 24 giờ
+  let startTime = now - 24 * 60 * 60 * 1000;
+
+  if (filterType === "30d") {
+    totalSlots = 30; // 30 cột tương ứng 30 ngày
+    intervalMs = 24 * 60 * 60 * 1000; // 1 ngày/mốc
+    startTime = now - 30 * 24 * 60 * 60 * 1000;
+  } else if (filterType === "3m") {
+    totalSlots = 12; // 12 mốc cho 3 tháng
+    intervalMs = 7 * 24 * 60 * 60 * 1000; // Khoảng 7 ngày/mốc
+    startTime = now - 90 * 24 * 60 * 60 * 1000;
+  }
+
+  let slotsData = new Array(totalSlots).fill(0);
+  let slotLabels = [];
+
+  // Tạo nhãn thời gian trục X
+  for (let i = 0; i < totalSlots; i++) {
+    let slotTime = startTime + i * intervalMs;
+    let d = new Date(slotTime);
+    if (filterType === "1d") {
+      slotLabels.push(
+        d.getHours().toString().padStart(2, "0") +
+          ":" +
+          (d.getMinutes() === 0
+            ? "00"
+            : d.getMinutes().toString().padStart(2, "0")),
+      );
+    } else {
+      slotLabels.push(d.getDate() + "/" + (d.getMonth() + 1));
+    }
+  }
+
+  // Đổ dữ liệu từ biến cache `globalAccessLogs` vào các mốc trục Y
+  Object.values(globalAccessLogs).forEach((log) => {
+    let t = log.timestamp || 0;
+    if (t >= startTime && t <= now) {
+      let slotIndex = Math.floor((t - startTime) / intervalMs);
+      if (slotIndex >= 0 && slotIndex < totalSlots) {
+        slotsData[slotIndex]++;
+      }
+    }
+  });
+
+  let canvasEl = document.getElementById("accessLineChart");
+  if (!canvasEl) return;
+
+  let ctx = canvasEl.getContext("2d");
+
+  // Hủy biểu đồ cũ nếu có để tránh lỗi đè khung vẽ
+  if (myAccessChart) {
+    myAccessChart.destroy();
+  }
+
+  // Vẽ biểu đồ đường mới bằng Chart.js
+  myAccessChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: slotLabels,
+      datasets: [
+        {
+          label: "Số lượng truy cập thực tế",
+          data: slotsData,
+          borderColor: "#0058f0",
+          backgroundColor: "rgba(0, 88, 240, 0.1)",
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3,
+          pointBackgroundColor: "#0058f0",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+        },
+      },
+    },
+  });
+}
+
+// 5. HIỆN THÔNG TIN CHI TIẾT HỌC VIÊN ĐANG LÀM BÀI REAL-TIME
+function loadLiveActiveQuizUsers() {
+  let activeBox = document.getElementById("live-active-users-box");
+  if (!activeBox) return;
+
+  database.ref("active_quiz_sessions").on("value", (snapshot) => {
+    let activeUsers = snapshot.val() || {};
+    activeBox.innerHTML = "";
+
+    let keys = Object.keys(activeUsers);
+    if (keys.length === 0) {
+      activeBox.innerHTML = `<p style="color: #777; text-align: center; margin: 0;">Không có học viên nào đang làm bài lúc này.</p>`;
+      return;
+    }
+
+    let html = `<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="background: #e9ecef; text-align: left;">
+          <th style="padding: 8px;">Họ và Tên</th>
+          <th style="padding: 8px;">MSSV</th>
+          <th style="padding: 8px;">Đang làm môn / Chương</th>
+          <th style="padding: 8px;">Đang ở câu số</th>
+          <th style="padding: 8px;">Điểm tạm tính</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    keys.forEach((key) => {
+      let u = activeUsers[key];
+      html += `<tr style="border-bottom: 1px solid #dee2e6;">
+        <td style="padding: 8px; font-weight: bold;">${u.name || "Ẩn danh"}</td>
+        <td style="padding: 8px;">${u.id || "N/A"}</td>
+        <td style="padding: 8px; color: #0058f0;">${u.subject || "Chưa chọn"} (${u.chapter || ""})</td>
+        <td style="padding: 8px; font-weight: bold; color: #e65100;">Câu ${u.currentQuestion || 1}</td>
+        <td style="padding: 8px; font-weight: bold; color: #28a745;">${u.currentScore || "0.00"}đ</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    activeBox.innerHTML = html;
+  });
 }

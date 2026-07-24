@@ -53,4 +53,9 @@ function submitStudentInfo() {
   // 5. GỌI HÀM ONLINE VÀ RENDER SAU KHI ĐÃ CÓ DỮ LIỆU CHÍNH XÁC
   updateOnlineStatus();
   renderThreads();
+
+  // 🌟 THÊM ĐOẠN NÀY VÀO ĐÂY: Ghi nhận 1 lượt truy cập hệ thống vào Firebase cho Admin Thống kê
+  if (typeof logUserAccessActivity === "function") {
+    logUserAccessActivity();
+  }
 }

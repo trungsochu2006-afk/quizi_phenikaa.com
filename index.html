@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="CSS/style.css" />
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   </head>
   <body>
     <div id="welcome-screen">
@@ -56,6 +59,13 @@
         <button onclick="showTab('home')">Trang chủ</button>
         <button onclick="showTab('quiz')">Câu Hỏi Trắc Nghiệm</button>
         <button onclick="showTab('threads')">Thread phenikaa</button>
+        <button
+          id="admin-stats-tab-btn"
+          onclick="showTab('admin-stats')"
+          style="display: none; background: #ff4d4d; color: white"
+        >
+          📊 Thống kê Admin
+        </button>
       </div>
       <div style="display: flex; align-items: center; gap: 15px">
         <div
@@ -231,6 +241,221 @@
         </div>
       </div>
     </div>
+    <div id="admin-stats" class="section" style="padding: 20px">
+      <div
+        class="nenchonmon"
+        style="
+          max-width: 1000px;
+          margin: 0 auto;
+          background: white;
+          padding: 25px;
+          border-radius: 12px;
+        "
+      >
+        <div class="mauchuquizi" style="margin-bottom: 20px">
+          📊 BẢNG THỐNG KÊ HỆ THỐNG DÀNH CHO ADMIN
+        </div>
+
+        <!-- 1. Thống kê tổng quan số lượng truy cập -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+          "
+        >
+          <div
+            style="
+              background: #e3f2fd;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #1565c0">Đang truy cập</h4>
+            <p
+              id="stat-online-now"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #0d47a1;
+              "
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: #e8f5e9;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #2e7d32">1 Giờ qua</h4>
+            <p
+              id="stat-1h"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #1b5e20;
+              "
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: #fff3e0;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #ef6c00">5 Giờ qua</h4>
+            <p
+              id="stat-5h"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #e65100;
+              "
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: #f3e5f5;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #7b1fa2">1 Ngày qua</h4>
+            <p
+              id="stat-1d"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #4a148c;
+              "
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: #ffebee;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #c62828">30 Ngày qua</h4>
+            <p
+              id="stat-30d"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #b71c1c;
+              "
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: #ede7f6;
+              padding: 15px;
+              border-radius: 8px;
+              text-align: center;
+            "
+          >
+            <h4 style="margin: 0; color: #4527a0">3 Tháng qua</h4>
+            <p
+              id="stat-3m"
+              style="
+                font-size: 24px;
+                font-weight: bold;
+                margin: 10px 0 0;
+                color: #311b92;
+              "
+            >
+              0
+            </p>
+          </div>
+        </div>
+
+        <!-- 2. Phần biểu đồ đường -->
+        <div style="margin-bottom: 30px">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            "
+          >
+            <h3 style="margin: 0; color: #333">
+              📈 Biểu đồ lịch sử truy cập (Mốc 30 phút/lần)
+            </h3>
+            <select
+              id="chart-time-filter"
+              onchange="updateAccessChart()"
+              style="
+                padding: 6px 12px;
+                border-radius: 6px;
+                border: 1px solid #ddd;
+              "
+            >
+              <option value="1d">Theo Ngày (Hôm nay)</option>
+              <option value="30d">Theo Tháng (30 ngày qua)</option>
+              <option value="3m">Theo 3 Tháng qua</option>
+            </select>
+          </div>
+          <div
+            style="
+              background: #fafafa;
+              padding: 15px;
+              border-radius: 8px;
+              border: 1px solid #eee;
+              height: 350px;
+            "
+          >
+            <canvas id="accessLineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. Ô nhỏ hiển thị các tài khoản đang làm bài thực tế -->
+        <div>
+          <h3 style="margin-bottom: 10px; color: #333">
+            🟢 Học viên đang làm bài trực tuyến
+          </h3>
+          <div
+            id="live-active-users-box"
+            style="
+              background: #f8f9fa;
+              border: 1px solid #dee2e6;
+              border-radius: 8px;
+              padding: 15px;
+              max-height: 250px;
+              overflow-y: auto;
+            "
+          >
+            <p style="color: #777; text-align: center; margin: 0">
+              Không có học viên nào đang làm bài lúc này.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="shop" class="section">
       <div class="grid">
@@ -281,7 +506,7 @@
               transition: 0.2s;
             "
           >
-            ✅ Nộp bài sớm
+            ✅ Nộp sớm / Thoát
           </button>
         </div>
 
@@ -308,6 +533,21 @@
             </button>
             <button class="quiz-btn" onclick="selectSubject('Lịch Sử Đảng')">
               Lịch Sử Đảng
+            </button>
+            <button class="quiz-btn" onclick="selectSubject('Kinh Tế Vĩ Mô')">
+              Kinh Tế Vĩ Mô
+            </button>
+            <button
+              class="quiz-btn"
+              onclick="selectSubject('Triết Học Mác Lê Nin')"
+            >
+              Triết Học Mác Lê Nin
+            </button>
+            <button
+              class="quiz-btn"
+              onclick="selectSubject('Kinh Tế Chính Trị Mác Lê Nin')"
+            >
+              Kinh Tế Chính Trị Mác Lê Nin
             </button>
             <button
               class="quiz-btn"
@@ -587,6 +827,9 @@
     <script src="js/co_khi_dai_cuong.js"></script>
     <script src="js/quan_tri_hoc.js"></script>
     <script src="js/ky_nang_knld.js"></script>
+    <script src="js/kinhtevimo.js"></script>
+    <script src="js/maclenin.js"></script>
+    <script src="js/ktmaclenin.js"></script>
 
     <!-- 2. Tải file tổng hợp kho câu hỏi -->
     <script src="js/questions.js"></script>

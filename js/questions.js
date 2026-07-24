@@ -6,5 +6,8 @@ const quizDatabase = {
   "Cơ Khí Đại Cương": co_khi_dai_cuong,
   "Quản Trị Học": quan_tri_hoc,
   "Kỹ Năng Khởi Nghiệp Và Lãnh Đạo": ky_nang_knld,
+  "Kinh Tế Vĩ Mô": kinhtevimo,
+  "Triết Học Mác Lê Nin": maclenin,
+  "Kinh Tế Chính Trị Mác Lê Nin": ktmaclenin,
 };
 let originalQuestions = []; // Biến chứa câu hỏi của chương đang làm
