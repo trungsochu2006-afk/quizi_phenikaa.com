@@ -1353,3 +1353,113 @@ function loadLiveActiveQuizUsers() {
     activeBox.innerHTML = html;
   });
 }
+function timKiemMonHoc() {
+  let input = document.getElementById("inputTimKiem");
+  let filter = input.value.toLowerCase().trim();
+
+  // Lấy container chứa danh sách và tất cả các nút môn học bên trong
+  let container = document.querySelector(".subject-list");
+  if (!container) return;
+
+  let buttons = Array.from(container.getElementsByClassName("quiz-btn"));
+
+  // Sắp xếp lại vị trí: Môn nào khớp từ khóa sẽ được đẩy lên đầu
+  buttons.sort((a, b) => {
+    let textA = (a.textContent || a.innerText).toLowerCase();
+    let textB = (b.textContent || b.innerText).toLowerCase();
+
+    let matchA = filter !== "" && textA.includes(filter);
+    let matchB = filter !== "" && textB.includes(filter);
+
+    if (matchA && !matchB) return -1; // Đẩy A lên trước
+    if (!matchA && matchB) return 1; // Đẩy B lên trước
+    return 0;
+  });
+
+  // Cập nhật lại thứ tự các nút trên giao diện (hiệu ứng nảy lên đầu)
+  buttons.forEach((btn) => container.appendChild(btn));
+
+  // Ẩn các nút không khớp từ khóa (nếu muốn gõ đến đâu gọn đến đấy)
+  buttons.forEach((btn) => {
+    let text = (btn.textContent || btn.innerText).toLowerCase();
+    if (filter === "" || text.includes(filter)) {
+      btn.style.display = ""; // Hiện lại
+    } else {
+      btn.style.display = "none"; // Ẩn đi nếu không khớp
+    }
+  });
+}
+// Danh sách các môn học của bạn
+let danhSachMon = [
+  "Tư tưởng Hồ Chí Minh",
+  "Quản Trị Học",
+  "Kỹ Năng Khởi Nghiệp Và Lãnh Đạo",
+  "Quản Lý Dự Án",
+  "Lịch Sử Đảng",
+  "Triết học Mác - Lênin", // Bạn có thể thêm các môn khác vào đây
+];
+
+// Hàm vẽ danh sách môn ra màn hình
+function hienThiDanhSach(arr) {
+  let container = document.getElementById("danhSachMonHoc");
+  container.innerHTML = ""; // Xóa danh sách cũ
+
+  arr.forEach((mon) => {
+    let btn = document.createElement("button");
+    btn.className = "btn-mon";
+    btn.innerText = mon;
+    // Thêm một chút CSS inline cho nút để giống ảnh của bạn
+    btn.style.cssText =
+      "width: 100%; padding: 15px; margin-bottom: 10px; background-color: #1e3a8a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; text-align: left; padding-left: 20px;";
+
+    // Sự kiện khi bấm vào môn học
+    btn.onclick = function () {
+      alert("Bạn đã chọn môn: " + mon);
+      // Code chuyển trang hoặc mở môn học ở đây
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+// Chạy lần đầu khi load trang
+hienThiDanhSach(danhSachMon);
+
+// Hàm tìm kiếm và tự động đưa môn khớp lên đầu
+function locMonHoc() {
+  let keyword = document
+    .getElementById("inputTimKiem")
+    .value.toLowerCase()
+    .trim();
+
+  if (keyword === "") {
+    hienThiDanhSach(danhSachMon); // Nếu không nhập gì thì hiện nguyên bản
+    return;
+  }
+
+  // Tách danh sách thành 2 phần: Môn khớp từ khóa (đẩy lên đầu) và Môn khác (để ở dưới)
+  let monKhop = danhSachMon.encode ? [] : [];
+  let monKhac = [];
+
+  danhSachMon.forEach((mon) => {
+    if (mon.toLowerCase().includes(keyword)) {
+      monKhop.push(mon); // Khớp thì cho lên nhóm đầu
+    } else {
+      monKhac.push(mon); // Không khớp cho xuống nhóm sau
+    }
+  });
+
+  // Gộp nhóm khớp lên trước, nhóm khác xuống sau
+  let ketQuaSapXep = [...monKhop, ...monKhac];
+
+  // Vẽ lại giao diện với thứ tự mới
+  hienThiDanhSach(ketQuaSapXep);
+
+  // Giữ lại focus cho ô input để không bị mất con trỏ chuột khi đang gõ
+  let inputElem = document.getElementById("inputTimKiem");
+  inputElem.focus();
+  // Đưa con trỏ về cuối chữ đang gõ
+  let val = inputElem.value;
+  inputElem.value = "";
+  inputElem.value = val;
+}

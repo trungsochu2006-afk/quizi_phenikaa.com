@@ -1047,3 +1047,24 @@ nav button:hover {
   pointer-events: none;
   animation: vuongMienNhayNhe 2s ease-in-out infinite alternate;
 }
+.search-box-container {
+  width: 100%;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+#inputTimKiem {
+  width: 90%;
+  padding: 12px 18px;
+  font-size: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+#inputTimKiem:focus {
+  border-color: #1e3a8a; /* Khớp với màu xanh chủ đạo của menu/nút */
+  box-shadow: 0 0 8px rgba(30, 58, 138, 0.2);
+}

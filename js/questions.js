@@ -9,5 +9,7 @@ const quizDatabase = {
   "Kinh Tế Vĩ Mô": kinhtevimo,
   "Triết Học Mác Lê Nin": maclenin,
   "Kinh Tế Chính Trị Mác Lê Nin": ktmaclenin,
+  "Chủ Nghĩa Khoa Học Xã Hội": cnkhxh,
+  "Triết 3 Tín": triet3tin,
 };
 let originalQuestions = []; // Biến chứa câu hỏi của chương đang làm

@@ -512,6 +512,15 @@
 
         <div id="quiz-subjects" class="quiz-sub-tab">
           <div class="mauchuquizi">CHỌN MÔN HỌC</div>
+          <!-- Ô tìm kiếm môn học -->
+          <div class="search-box-container">
+            <input
+              type="text"
+              id="inputTimKiem"
+              placeholder="🔍 Nhập tên môn học cần tìm..."
+              onkeyup="timKiemMonHoc()"
+            />
+          </div>
           <div class="subject-list">
             <button
               class="quiz-btn"
@@ -554,6 +563,15 @@
               onclick="selectSubject('Cơ Khí Đại Cương')"
             >
               Cơ Khí Đại Cương
+            </button>
+            <button
+              class="quiz-btn"
+              onclick="selectSubject('Chủ Nghĩa Khoa Học Xã Hội')"
+            >
+              Chủ Nghĩa Khoa Học Xã Hội
+            </button>
+            <button class="quiz-btn" onclick="selectSubject('Triết 3 Tín')">
+              Triết 3 Tín
             </button>
           </div>
         </div>
@@ -830,6 +848,8 @@
     <script src="js/kinhtevimo.js"></script>
     <script src="js/maclenin.js"></script>
     <script src="js/ktmaclenin.js"></script>
+    <script src="js/cnkhxh.js"></script>
+    <script src="js/triet3tin.js"></script>
 
     <!-- 2. Tải file tổng hợp kho câu hỏi -->
     <script src="js/questions.js"></script>
