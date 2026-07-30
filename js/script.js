@@ -3,7 +3,7 @@
 // =========================================
 const shopeeLink = "https://s.shopee.vn/8V3Q7Nm1he";
 
-// Chức năng: Kích hoạt chế độ trả lời bình luận (reply) cho một bình luận cụ thể, hiển thị khung trạng thái và gắn tên người được tag vào ô nhập liệu.
+// Chức năng: Kích hoạt chế độ trả lời bình luận (reply)
 window.kichHoatReplyComment = function (postId, cmtKey, username) {
   let inputEl = document.getElementById(`input-cmt-${postId}`);
   let statusEl = document.getElementById(`reply-status-${postId}`);
@@ -15,7 +15,8 @@ window.kichHoatReplyComment = function (postId, cmtKey, username) {
     inputEl.focus();
   }
 };
-// Chức năng: Hủy bỏ chế độ trả lời bình luận, ẩn khung trạng thái và xóa dữ liệu bình luận cha (parent ID) đang chọn.
+
+// Chức năng: Hủy bỏ chế độ trả lời bình luận
 window.huyReplyComment = function (postId) {
   let inputEl = document.getElementById(`input-cmt-${postId}`);
   let statusEl = document.getElementById(`reply-status-${postId}`);
@@ -25,7 +26,8 @@ window.huyReplyComment = function (postId) {
     statusEl.style.display = "none";
   }
 };
-// Chức năng: Xử lý sự kiện thích hoặc hủy thích một bình luận bằng Firebase Transaction dựa trên định danh của người dùng hiện tại.
+
+// Chức năng: Xử lý sự kiện thích hoặc hủy thích một bình luận
 function likeComment(postId, cmtKey) {
   let currentUserId =
     currentStudent && currentStudent.id ? currentStudent.id.trim() : "guest";
@@ -50,30 +52,63 @@ function likeComment(postId, cmtKey) {
     return cmt;
   });
 }
-// Chức năng: Quản lý việc ẩn hiện các section giao diện chính, tự động ẩn/hiện banner trang chủ và dọn dẹp âm thanh trắc nghiệm khi chuyển tab.
-function showTab(tab) {
-  // 1. Logic ẩn hiện nội dung tab (giữ nguyên của anh)
-  document
-    .querySelectorAll(".section")
-    .forEach((s) => s.classList.remove("active"));
-  let target = document.getElementById(tab);
-  if (target) target.classList.add("active");
 
-  // 2. LOGIC TỰ ĐỘNG ẨN BANNER KHI CHUYỂN TAB
+// =========================================
+// 🔀 2. HÀM QUẢN LÝ TAB CHUẨN DUY NHẤT (ĐÃ GỘP)
+// =========================================
+function showTab(tabId) {
+  // 1. Ẩn tất cả các section giao diện
+  document.querySelectorAll(".section").forEach((s) => {
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
+
+  // 2. Hiển thị section mục tiêu
+  let target = document.getElementById(tabId);
+  if (target) {
+    target.classList.add("active");
+    target.style.display = "block";
+  }
+
+  // 3. Nếu rời khỏi tab quiz thì tắt nhạc và ẩn nút nộp sớm
+  if (tabId !== "quiz") {
+    if (typeof tatTatCaNhacQuiz === "function") {
+      tatTatCaNhacQuiz();
+    }
+    let exitBox = document.getElementById("emergency-exit-box");
+    if (exitBox) exitBox.style.display = "none";
+  }
+
+  // 4. Logic ẩn/hiện Banner trang chủ (chỉ hiện ở tab 'home')
   const bannerPC = document.getElementById("carousel-container-pc");
   const bannerMobile = document.getElementById("carousel-container-mobile");
 
-  if (tab === "home") {
-    // Nếu là trang chủ thì hiện lại banner
+  if (tabId === "home") {
     if (bannerPC) bannerPC.style.display = "block";
     if (bannerMobile) bannerMobile.style.display = "block";
   } else {
-    // Nếu là tab khác (Quiz, Thread, Shop) thì ẩn banner đi
     if (bannerPC) bannerPC.style.display = "none";
     if (bannerMobile) bannerMobile.style.display = "none";
   }
+
+  // 5. Kiểm tra quyền khi bấm vào tab thống kê Admin
+  if (tabId === "admin-stats") {
+    if (
+      !currentStudent ||
+      (currentStudent.id !== "7277979906" &&
+        currentStudent.name !== "trung_admin")
+    ) {
+      alert("Bạn không có quyền truy cập khu vực này!");
+      showTab("home");
+      return;
+    }
+    if (typeof loadAdminStatisticsData === "function") {
+      loadAdminStatisticsData();
+    }
+  }
 }
-// Chức năng: Lọc và tìm kiếm các thẻ tin tức dựa trên từ khóa nhập vào từ ô tìm kiếm người dùng.
+
+// Chức năng: Lọc và tìm kiếm các thẻ tin tức
 function searchNews() {
   let keyword = document.getElementById("newsSearch").value.toLowerCase();
   document.querySelectorAll(".news").forEach((card) => {
@@ -96,7 +131,7 @@ document.querySelectorAll(".news").forEach((card) => {
     video.pause();
   };
 });
-// Chức năng: Tạm dừng phát video overlay, ẩn lớp phủ và mở liên kết sàn thương mại điện tử Shopee trong một tab mới.
+
 function goShopee() {
   overlay.style.display = "none";
   video.play();
@@ -110,7 +145,7 @@ document.addEventListener("visibilitychange", function () {
     }
   }
 });
-// Chức năng: Đóng cửa sổ video modal, đặt lại thời gian phát video về 0 và chuyển hướng người dùng về tab trang chủ.
+
 function closeVideo() {
   video.pause();
   video.currentTime = 0;
@@ -118,8 +153,9 @@ function closeVideo() {
   modal.style.display = "none";
   showTab("home");
 }
+
 // =========================================
-// 📝 LOGIC HỆ THỐNG TRẮC NGHIỆM (QUIZ) ĐÃ CẬP NHẬT NỘP SỚM & ÂM THANH
+// 📝 3. LOGIC HỆ THỐNG TRẮC NGHIỆM (QUIZ)
 // =========================================
 let selectedSubject = "";
 let selectedChapter = "";
@@ -132,12 +168,11 @@ let correctAnswersSet = new Set();
 let quizStartTime = 0;
 
 const correctSound = new Audio("audio/dung.mp3");
-const tenPointsSound = new Audio("audio/10diem.mp3"); // 🌟 Nhạc dành riêng cho 10 điểm tuyệt đối
-const highSound = new Audio("audio/kinh.mp3"); // 8den10
-const mediumSound = new Audio("audio/aiep.mp3"); // 5 den 8
-const lowSound = new Audio("audio/lay10lay.mp3"); // Dành 3den5
-const earlySubmitSound = new Audio("audio/taolaymay.mp3"); // 🌟 0 den 3
-
+const tenPointsSound = new Audio("audio/10diem.mp3");
+const highSound = new Audio("audio/kinh.mp3");
+const mediumSound = new Audio("audio/aiep.mp3");
+const lowSound = new Audio("audio/lay10lay.mp3");
+const earlySubmitSound = new Audio("audio/taolaymay.mp3");
 const wrongSound = new Audio("audio/danhram.mp3");
 const countdownSound = new Audio("audio/colen.mp3");
 
@@ -154,44 +189,34 @@ function showQuizSubTab(subTabId) {
     .forEach((tab) => (tab.style.display = "none"));
   document.getElementById(subTabId).style.display = "block";
 }
-// Chức năng: Tự động quét từ Chương 1 đến Chương 10, kiểm tra dữ liệu và hiển thị danh sách các chương có sẵn câu hỏi của môn học được chọn.
+
 function selectSubject(subjectName) {
   selectedSubject = subjectName;
   const subjectData = quizDatabase[subjectName];
-
   const chapterListContainer = document.querySelector(".chapter-list");
 
   if (chapterListContainer && subjectData) {
-    // Xóa danh sách cũ trước khi render mới
     chapterListContainer.innerHTML = "";
-
     for (let chapterName in subjectData) {
       if (Array.isArray(subjectData[chapterName])) {
         const btn = document.createElement("button");
         btn.className = "quiz-btn";
-
-        // 🌟 Dùng Flexbox để tách tên chương và số lượng câu sang 2 bên
         btn.style.display = "flex";
         btn.style.justifyContent = "space-between";
         btn.style.alignItems = "center";
-
-        // HTML bên trong nút bấm
         btn.innerHTML = `
-      <span>📖 ${chapterName}</span>
-      <span style="background: rgba(0,0,0,0.08); padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #ffffff;">
-        ${subjectData[chapterName].length} câu
-      </span>
-    `;
-
+          <span>📖 ${chapterName}</span>
+          <span style="background: rgba(0,0,0,0.08); padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #ffffff;">
+            ${subjectData[chapterName].length} câu
+          </span>
+        `;
         btn.onclick = function () {
           selectChapter(chapterName);
         };
-
         chapterListContainer.appendChild(btn);
       }
     }
   } else {
-    // 🌟 THÊM ĐOẠN NÀY ĐỂ BÁO LỖI NẾU MÔN CHƯA CÓ DATA, TRÁNH HIỆN NHẦM
     if (chapterListContainer) {
       chapterListContainer.innerHTML =
         "<p style='color: red; text-align: center; font-weight: bold;'>Môn này đang cập nhật câu hỏi, vui lòng chọn môn khác!</p>";
@@ -201,16 +226,14 @@ function selectSubject(subjectName) {
   document.getElementById("quiz-subjects").style.display = "none";
   document.getElementById("quiz-chapters").style.display = "block";
 }
-// Chức năng: Tắt toàn bộ âm thanh trắc nghiệm đang phát và quay trở lại màn hình chọn môn học.
+
 function backToSubjects() {
   tatTatCaNhacQuiz();
   showQuizSubTab("quiz-subjects");
 }
 
-// Chức năng: Bốc đúng bộ câu hỏi của chương học được chọn từ kho dữ liệu hoặc thiết lập thông báo cập nhật nếu chưa có câu hỏi.
 function selectChapter(chapterName) {
   selectedChapter = chapterName;
-
   if (
     quizDatabase[selectedSubject] &&
     quizDatabase[selectedSubject][selectedChapter]
@@ -230,20 +253,18 @@ function selectChapter(chapterName) {
       },
     ];
   }
-
-  demnguoc(); // Bắt đầu đếm ngược 3 giây vào bài thi
+  demnguoc();
 }
-// Chức năng: Dừng âm thanh trắc nghiệm và điều hướng quay trở lại màn hình danh sách các chương của môn học.
+
 function backToChapters() {
   tatTatCaNhacQuiz();
   showQuizSubTab("quiz-chapters");
 }
 
-// Chức năng: Hiển thị giao diện đếm ngược 3 giây trước khi bước vào bài thi chính thức kèm âm thanh đếm ngược.
 function demnguoc() {
   showQuizSubTab("quiz-countdown");
   let exitBox = document.getElementById("emergency-exit-box");
-  if (exitBox) exitBox.style.display = "block"; // Hiện nút Nộp bài sớm khi làm bài
+  if (exitBox) exitBox.style.display = "block";
 
   let count = 3;
   const timerEl = document.getElementById("countdown-timer");
@@ -261,7 +282,6 @@ function demnguoc() {
   }, 1000);
 }
 
-// Chức năng: Khởi tạo bộ câu hỏi xáo trộn ngẫu nhiên (shuffle), reset các biến trạng thái, thời gian bắt đầu và bắt đầu phiên làm bài trắc nghiệm.
 function initQuizGame() {
   let exitBox = document.getElementById("emergency-exit-box");
   if (exitBox) exitBox.style.display = "block";
@@ -284,7 +304,6 @@ function initQuizGame() {
   updateLiveScoreBar();
   renderQuestion();
 
-  // 🌟 GHI NHẬN LÊN HỆ THỐNG: Học viên này đang bắt đầu làm bài
   if (
     typeof currentStudent !== "undefined" &&
     currentStudent &&
@@ -303,7 +322,7 @@ function initQuizGame() {
     });
   }
 }
-// Chức năng: Tính toán và cập nhật điểm số trực tiếp cùng thống kê số câu đúng trên tổng số câu hỏi theo thời gian thực.
+
 function updateLiveScoreBar() {
   const totalQ = originalQuestions.length;
   const correctCount = correctAnswersSet.size;
@@ -343,7 +362,6 @@ function renderQuestion() {
   }
   document.getElementById("prev-btn").disabled = currentQuestionIdx === 0;
 
-  // 🌟 ĐOẠN NÀY ĐÃ THÊM: Cập nhật tiến độ câu hỏi và điểm số real-time lên Firebase cho Admin
   if (
     typeof currentStudent !== "undefined" &&
     currentStudent &&
@@ -359,7 +377,6 @@ function renderQuestion() {
   }
 }
 
-// Chức năng: Xử lý đáp án người dùng chọn, kiểm tra đúng/sai, cộng trừ điểm số, phát âm thanh tương ứng và hiển thị màu sắc trạng thái đáp án.
 function answerQuestion(selectedOption) {
   let activeList = isRepeatMode ? wrongQuestionsQueue : questionsPool;
   let currentQ = activeList[currentQuestionIdx];
@@ -378,7 +395,6 @@ function answerQuestion(selectedOption) {
   showAnswerStatus(currentQ, selectedOption);
 }
 
-// Chức năng: Khóa các nút lựa chọn đáp án sau khi đã chọn, đồng thời tô màu chỉ rõ đáp án đúng và đáp án người dùng đã chọn.
 function showAnswerStatus(questionObj, chosenOption) {
   ["A", "B", "C", "D"].forEach((opt) => {
     const btn = document.getElementById(`opt${opt}`);
@@ -388,7 +404,6 @@ function showAnswerStatus(questionObj, chosenOption) {
   });
 }
 
-// Chức năng: Di chuyển lùi lại câu hỏi trước đó trong danh sách nếu chưa ở câu đầu tiên.
 function prevQuestion() {
   if (currentQuestionIdx > 0) {
     currentQuestionIdx--;
@@ -396,7 +411,6 @@ function prevQuestion() {
   }
 }
 
-// Chức năng: Chuyển sang câu hỏi tiếp theo trong danh sách hoặc kích hoạt chu trình kiểm tra câu trả lời sai.
 function nextQuestion() {
   let activeList = isRepeatMode ? wrongQuestionsQueue : questionsPool;
   if (currentQuestionIdx < activeList.length - 1) {
@@ -407,7 +421,6 @@ function nextQuestion() {
   }
 }
 
-// Chức năng: Tự động gom các câu trả lời sai vào hàng đợi luyện tập lại (repeat mode) hoặc gọi hàm kết thúc bài thi nếu đã đúng hết.
 function autoCheckAndLoopCycle() {
   if (!isRepeatMode) {
     let failedQuestions = [];
@@ -443,15 +456,12 @@ function autoCheckAndLoopCycle() {
   }
 }
 
-// 🌟 HÀM KẾT THÚC HOẶC NỘP SỚM BÀI THI
-// Chức năng: Tính toán thời gian hoàn thành, lưu kết quả lên bảng xếp hạng, phân loại điểm số để phát các hiệu ứng âm thanh đặc trưng theo dải điểm và hiển thị màn hình tổng kết.
 function ketthucbaithi() {
   let totalDurationSeconds = Math.round((Date.now() - quizStartTime) / 1000);
   saveToLeaderboard(totalDurationSeconds);
 
   let exitBox = document.getElementById("emergency-exit-box");
   if (exitBox) exitBox.style.display = "none";
-  // 🌟 THÊM ĐOẠN NÀY VÀO ĐÂY ĐỂ XÓA TÊN KHỎI DANH SÁCH ĐANG LÀM BÀI KHI ĐÃ NỘP XONG
   if (
     typeof currentStudent !== "undefined" &&
     currentStudent &&
@@ -470,21 +480,16 @@ function ketthucbaithi() {
   document.getElementById("score-text").innerText =
     `${finalScore.toFixed(2)} / 10 Điểm`;
 
-  // 🌟 DỪNG TẤT CẢ NHẠC CŨ TRƯỚC KHI PHÁT NHẠC MỚI
   tatTatCaNhacQuiz();
 
-  // 🌟 PHÂN LOẠI ÂM THANH VÀ THÔNG BÁO DỰA TRÊN DẢI ĐIỂM THỰC TẾ (GIỮ NGUYÊN 100% LOGIC CŨ VÀ MỞ RỘNG)
   if (finalScore === 10) {
-    // 10 điểm tuyệt đối: Phát nhạc 10diem.mp3
     tenPointsSound.currentTime = 0;
     tenPointsSound.play().catch(() => {});
-
     document.querySelector(".result-screen .mauchuquizi").innerText =
       "Ô MAI CA ĐÚNG HẾT RỒI KÌA";
     document.getElementById("summary-text").innerHTML =
       `Chúc mừng học viên: <b>${currentStudent.name}</b> (MSSV: ${currentStudent.id})!<br>Bạn đã hoàn thành chính xác 100% tất cả các câu hỏi của <b>${selectedChapter}</b> - <b>${selectedSubject}</b>.<br>Thời gian hoàn thành: <b>${totalDurationSeconds} giây</b>.`;
   } else if (finalScore >= 8 && finalScore < 10) {
-    // Từ 8 đến dưới 10 điểm: Phát nhạc cao (ví dụ dùng earlySubmitSound hoặc nhạc riêng nếu có)
     if (typeof highSound !== "undefined") {
       highSound.currentTime = 0;
       highSound.play().catch(() => {});
@@ -492,44 +497,37 @@ function ketthucbaithi() {
       earlySubmitSound.currentTime = 0;
       earlySubmitSound.play().catch(() => {});
     }
-
     document.querySelector(".result-screen .mauchuquizi").innerText =
       "XUẤT SẮC QUÁ ĐI MẤT!";
     document.getElementById("summary-text").innerHTML =
       `Học viên: <b>${currentStudent.name}</b> (MSSV: ${currentStudent.id}) đã hoàn thành bài.<br>Số câu đúng: <b>${correctCount}/${totalQ} câu</b> (${finalScore.toFixed(2)} điểm).<br>Thời gian làm bài: <b>${totalDurationSeconds} giây</b>.`;
   } else if (finalScore >= 5 && finalScore < 8) {
-    // Từ 5 đến dưới 8 điểm: Phát nhạc trung bình
     if (typeof mediumSound !== "undefined") {
       mediumSound.currentTime = 0;
       mediumSound.play().catch(() => {});
     } else {
-      earlySubmitSound.currentTime = 0; //
+      earlySubmitSound.currentTime = 0;
       earlySubmitSound.play().catch(() => {});
     }
-
     document.querySelector(".result-screen .mauchuquizi").innerText =
       "LÀM TỐT LẮM, CỐ CHÚT NỮA NHÉ";
     document.getElementById("summary-text").innerHTML =
       `Học viên: <b>${currentStudent.name}</b> (MSSV: ${currentStudent.id}) đã nộp bài.<br>Số câu đúng: <b>${correctCount}/${totalQ} câu</b> (${finalScore.toFixed(2)} điểm).<br>Thời gian làm bài: <b>${totalDurationSeconds} giây</b>.`;
   } else if (finalScore >= 3 && finalScore < 5) {
-    // Từ 3 đến dưới 5 điểm: Phát nhạc thấp / cảnh báo
     if (typeof lowSound !== "undefined") {
       lowSound.currentTime = 0;
       lowSound.play().catch(() => {});
     } else {
-      wrongSound.currentTime = 0; // pẹt pẹt
+      wrongSound.currentTime = 0;
       wrongSound.play().catch(() => {});
     }
-
     document.querySelector(".result-screen .mauchuquizi").innerText =
       "LẦN SAU CỐ GẮNG HƠN NHÉ";
     document.getElementById("summary-text").innerHTML =
       `Học viên: <b>${currentStudent.name}</b> (MSSV: ${currentStudent.id}) đã nộp bài.<br>Số câu đúng: <b>${correctCount}/${totalQ} câu</b> (${finalScore.toFixed(2)} điểm).<br>Thời gian làm bài: <b>${totalDurationSeconds} giây</b>.`;
   } else {
-    // Dưới 3 điểm (hoặc 0 điểm / nộp sớm):
     earlySubmitSound.currentTime = 0;
     earlySubmitSound.play().catch(() => {});
-
     document.querySelector(".result-screen .mauchuquizi").innerText =
       "LẦN SAU CỐ GẮNG HƠN NHÉ";
     document.getElementById("summary-text").innerHTML =
@@ -537,15 +535,16 @@ function ketthucbaithi() {
   }
 }
 
-// Chức năng: Hiển thị hộp thoại xác nhận nộp bài sớm, dừng âm thanh đếm ngược và tiến hành kết thúc bài thi.
 function nopBaiSom() {
-  if (confirm("Bạn có chắc chắn muốn nộp bài sớm và xem kết quả không?")) {
-    tatTatCaNhacQuiz();
+  if (confirm("Bạn có chắc chắn muốn nộp bài và xem kết quả không?")) {
+    if (typeof countdownSound !== "undefined") {
+      countdownSound.pause();
+      countdownSound.currentTime = 0;
+    }
     ketthucbaithi();
   }
 }
 
-// Chức năng: Tạm dừng và đặt lại thời gian về 0 cho tất cả các tệp âm thanh đang phát liên quan đến trắc nghiệm.
 function tatTatCaNhacQuiz() {
   if (typeof tenPointsSound !== "undefined") {
     tenPointsSound.pause();
@@ -561,36 +560,7 @@ function tatTatCaNhacQuiz() {
   }
 }
 
-// Tự động tắt nhạc khi rời khỏi tab trắc nghiệm hoặc chuyển trang
-function showTab(tab) {
-  document
-    .querySelectorAll(".section")
-    .forEach((s) => s.classList.remove("active"));
-  let target = document.getElementById(tab);
-  if (target) target.classList.add("active");
-
-  // Nếu không ở tab quiz thì tắt sạch nhạc quiz đang phát
-  if (tab !== "quiz") {
-    tatTatCaNhacQuiz();
-    let exitBox = document.getElementById("emergency-exit-box");
-    if (exitBox) exitBox.style.display = "none";
-  }
-
-  const bannerPC = document.getElementById("carousel-container-pc");
-  const bannerMobile = document.getElementById("carousel-container-mobile");
-
-  if (tab === "home") {
-    if (bannerPC) bannerPC.style.display = "block";
-    if (bannerMobile) bannerMobile.style.display = "block";
-  } else {
-    if (bannerPC) bannerPC.style.display = "none";
-    if (bannerMobile) bannerMobile.style.display = "none";
-  }
-}
-// Chức năng: Lưu trữ hoặc cập nhật thành tích điểm số và thời gian làm bài của học viên vào LocalStorage để làm bảng xếp hạng.
-// Chức năng: Lưu trữ hoặc cập nhật thành tích điểm số và thời gian làm bài của học viên, giữ nguyên logic so sánh thành tích tốt nhất trên máy (localStorage) và đồng bộ đồng thời lên Firebase Database.
 function saveToLeaderboard(duration) {
-  // 1. Giữ nguyên logic xử lý LocalStorage như cũ
   let data = localStorage.getItem("quiz_leaderboard");
   let leaderboard = data ? JSON.parse(data) : [];
 
@@ -619,7 +589,6 @@ function saveToLeaderboard(duration) {
       leaderboard[existingRecordIndex].score = currentScore;
       leaderboard[existingRecordIndex].correctCount = correctCount;
       leaderboard[existingRecordIndex].timestamp = Date.now();
-
       recordToSave = leaderboard[existingRecordIndex];
     }
   } else {
@@ -636,13 +605,10 @@ function saveToLeaderboard(duration) {
     leaderboard.push(recordToSave);
   }
 
-  // Lưu lại vào localStorage của trình duyệt
   localStorage.setItem("quiz_leaderboard", JSON.stringify(leaderboard));
 
-  // 2. Bổ sung thêm phần đồng bộ lên Firebase Database để các tài khoản khác nhìn thấy chung bảng xếp hạng
   if (recordToSave && currentStudent && currentStudent.id) {
     let cleanId = currentStudent.id.trim();
-    // Tạo một nhánh riêng trên Firebase để lưu thành tích theo ID người dùng + Môn + Chương (tránh trùng lặp key)
     let safeChapterKey = selectedChapter.replace(/[.#$\/\[\]]/g, "_");
     let safeSubjectKey = selectedSubject.replace(/[.#$\/\[\]]/g, "_");
 
@@ -650,7 +616,6 @@ function saveToLeaderboard(duration) {
       `leaderboards/${safeSubjectKey}_${safeChapterKey}_${cleanId}`,
     );
 
-    // Kiểm tra và cập nhật lên Firebase nếu điểm cao hơn hoặc thời gian tốt hơn
     firebaseRef.once("value", (snapshot) => {
       let fbData = snapshot.val();
       if (
@@ -664,8 +629,6 @@ function saveToLeaderboard(duration) {
   }
 }
 
-// Chức năng: Lọc, sắp xếp dữ liệu bảng xếp hạng theo điểm số và thời gian của môn học hiện tại, sau đó hiển thị danh sách lên giao diện.
-// Chức năng: Lọc, sắp xếp dữ liệu bảng xếp hạng từ Firebase theo môn học hiện tại, sau đó hiển thị danh sách lên giao diện cho toàn bộ người dùng.
 function showLeaderboardTab() {
   document.getElementById("leaderboard-title").innerText =
     `BẢNG XẾP HẠNG MÔN: ${selectedSubject.toUpperCase()}`;
@@ -675,24 +638,20 @@ function showLeaderboardTab() {
 
   showQuizSubTab("quiz-leaderboard");
 
-  // Lấy dữ liệu từ Firebase Realtime Database tại nhánh leaderboards
   database.ref("leaderboards").once("value", (snapshot) => {
     let rawData = snapshot.val();
     let leaderboard = [];
 
     if (rawData) {
-      // Chuyển đổi dữ liệu object từ Firebase thành mảng
       Object.keys(rawData).forEach((key) => {
         leaderboard.push(rawData[key]);
       });
     }
 
-    // Lọc theo môn học hiện tại
     let subjectFiltered = leaderboard.filter(
       (item) => item.subject === selectedSubject,
     );
 
-    // Sắp xếp: Điểm cao trước, nếu bằng điểm thì xét thời gian nhanh hơn
     subjectFiltered.sort((a, b) => {
       let scoreA = a.score !== undefined ? a.score : 10;
       let scoreB = b.score !== undefined ? b.score : 10;
@@ -710,7 +669,6 @@ function showLeaderboardTab() {
       subjectFiltered.forEach((student, index) => {
         let mssvBaoMat = student.id ? student.id.substring(0, 3) + "***" : "";
         let diemSo = student.score !== undefined ? student.score : "10.00";
-        // Nếu có giá trị số câu thì hiển thị, nếu không mặc định lấy theo số câu gốc hiện tại
         let soCau =
           student.correctCount !== undefined
             ? student.correctCount
@@ -735,7 +693,6 @@ function showLeaderboardTab() {
   });
 }
 
-// Chức năng: Tắt âm thanh và điều hướng người dùng quay lại màn hình kết quả hoặc danh sách chương tùy thuộc vào trạng thái hoàn thành bài thi.
 function goBackFromLeaderboard() {
   tatTatCaNhacQuiz();
   let exitBox = document.getElementById("emergency-exit-box");
@@ -751,13 +708,11 @@ function goBackFromLeaderboard() {
   }
 }
 
-// Chức năng: Dừng âm thanh hiện tại và khởi động lại quá trình đếm ngược để làm lại bài thi từ đầu.
 function restartQuiz() {
   tatTatCaNhacQuiz();
   demnguoc();
 }
 
-// Chức năng: Thoát khẩn cấp khỏi bài thi, dọn dẹp toàn bộ dữ liệu trạng thái tạm thời và đưa người dùng về giao diện chọn môn học chính.
 function emergencyExit() {
   tatTatCaNhacQuiz();
   let exitBox = document.getElementById("emergency-exit-box");
@@ -771,7 +726,6 @@ function emergencyExit() {
   showQuizSubTab("quiz-subjects");
 }
 
-// Chức năng: Ẩn/hiện menu thả xuống thông tin tài khoản người dùng góc màn hình và nạp dữ liệu hiện tại vào các ô chỉnh sửa.
 function toggleUserMenu(event) {
   event.stopPropagation();
   let menu = document.getElementById("menu-tha-tai-khoan");
@@ -802,9 +756,8 @@ document.addEventListener("click", function () {
 });
 
 // =========================================
-// 👤 5. ĐỒNG BỘ TÀI KHOẢN VÀ AVATAR
+// 👤 4. ĐỒNG BỘ TÀI KHOẢN VÀ AVATAR
 // =========================================
-// Chức năng: Tải và hiển thị ảnh đại diện hoặc chữ cái đầu tên sinh viên từ LocalStorage và đồng thời lắng nghe cập nhật realtime từ Firebase Database.
 function hienThiGiaoDienTaiKhoan() {
   let tenSVDong = currentStudent.name
     ? currentStudent.name
@@ -813,7 +766,6 @@ function hienThiGiaoDienTaiKhoan() {
   let btnEl = document.getElementById("avatar-nut-bam");
   if (!btnEl) return;
 
-  // 1. Tải nhanh từ localStorage trước
   let savedImg = localStorage.getItem("user_avatar_base64_" + mssvSVDong);
   if (savedImg) {
     btnEl.innerHTML = `<img src="${savedImg}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
@@ -821,26 +773,22 @@ function hienThiGiaoDienTaiKhoan() {
     btnEl.innerHTML = `<span id="avatar-chu-cai">${tenSVDong.trim().charAt(0).toUpperCase()}</span>`;
   }
 
-  // 2. Lắng nghe Realtime từ Firebase (cập nhật nếu có ảnh mới trên cloud)
   if (currentStudent.id) {
     database
       .ref("users/" + currentStudent.id + "/avatar")
       .on("value", (snapshot) => {
         let firebaseAvatar = snapshot.val();
         if (firebaseAvatar) {
-          // Cập nhật vào localStorage để lần sau mở web nhanh hơn
           localStorage.setItem(
             "user_avatar_base64_" + mssvSVDong,
             firebaseAvatar,
           );
-          // Cập nhật giao diện ngay lập tức
           btnEl.innerHTML = `<img src="${firebaseAvatar}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
         }
       });
   }
 }
 
-// Chức năng: Kiểm tra tính hợp lệ, chống trùng lặp MSSV và thực hiện lưu trữ thông tin thay đổi tài khoản người dùng lên hệ thống.
 function luuThayDoiTaiKhoan() {
   let newName = document.getElementById("menu-input-ten").value.trim();
   let newId = document.getElementById("menu-input-mssv").value.trim();
@@ -880,27 +828,18 @@ function luuThayDoiTaiKhoan() {
   });
 }
 
-// Chức năng: Cập nhật thông tin sinh viên mới, xử lý đặt lại hoặc đồng bộ avatar và cập nhật đồng loạt tên/MSSV mới cho toàn bộ các bài viết, bình luận cũ trên Firebase.
 function thucHienLuuThayDoi(newName, newId) {
   let oldId = currentStudent.id ? currentStudent.id.trim() : "000000";
   let oldName = currentStudent.name ? currentStudent.name.trim() : "";
-
-  // TẠO KEY ĐỊNH DANH DUY NHẤT DỰA TRÊN CẢ TÊN VÀ MSSV
-  let newUniqueKey = newName + "_" + newId;
   let oldUniqueKey = oldName + "_" + oldId;
-
-  // Lấy ảnh cũ theo định danh cũ
   let currentAvatar =
     localStorage.getItem("user_avatar_base64_" + oldUniqueKey) || "";
 
-  // NẾU THÔNG TIN BỊ THAY ĐỔI -> RESET AVATAR
-  // Tức là nếu Tên hoặc MSSV khác với cũ thì xóa sạch ảnh cũ trong localStorage
   if (newName !== oldName || newId !== oldId) {
     localStorage.removeItem("user_avatar_base64_" + oldUniqueKey);
-    currentAvatar = ""; // Reset về rỗng để bắt đầu chọn ảnh mới
+    currentAvatar = "";
   }
 
-  // Cập nhật thông tin sinh viên mới
   currentStudent.name = newName;
   currentStudent.id = newId;
   localStorage.setItem(
@@ -908,7 +847,6 @@ function thucHienLuuThayDoi(newName, newId) {
     JSON.stringify(currentStudent),
   );
 
-  // Cập nhật Firebase (giữ nguyên logic của anh)
   database.ref("threads").once("value", (snapshot) => {
     let threadsData = snapshot.val();
     if (threadsData) {
@@ -918,7 +856,6 @@ function thucHienLuuThayDoi(newName, newId) {
         if (post.mssv && post.mssv.trim() === oldId) {
           updates[`threads/${postKey}/author`] = newName;
           updates[`threads/${postKey}/mssv`] = newId;
-          // Nếu đổi người, cần xóa ảnh cũ ở bài đăng cũ (hoặc cập nhật ảnh rỗng)
           if (newName !== oldName || newId !== oldId) {
             updates[`threads/${postKey}/avatar`] = "";
           }
@@ -953,7 +890,6 @@ function thucHienLuuThayDoi(newName, newId) {
   );
 }
 
-// Chức năng: Đọc tệp ảnh tải lên từ thiết bị, mã hóa Base64, lưu trữ lên Firebase Database lẫn LocalStorage và gọi hàm cập nhật ảnh đại diện hàng loạt cho các bài đăng cũ.
 function capNhatAvatarTaiKhoan(input) {
   let mssv = currentStudent.id;
   if (!mssv) return alert("Vui lòng đăng nhập!");
@@ -971,7 +907,6 @@ function capNhatAvatarTaiKhoan(input) {
   }
 }
 
-// Chức năng: Quét toàn bộ bài viết và bình luận trên Firebase để cập nhật hình ảnh đại diện mới đồng bộ cho một mã số sinh viên cụ thể.
 function capNhatAnhTatCaBaiDangCu(mssv, newAvatar) {
   database.ref("threads").once("value", (snapshot) => {
     let updates = {};
@@ -979,12 +914,10 @@ function capNhatAnhTatCaBaiDangCu(mssv, newAvatar) {
       let post = child.val();
       let postId = child.key;
 
-      // Update avatar tác giả bài viết
       if (post.mssv === mssv) {
         updates[`threads/${postId}/avatar`] = newAvatar;
       }
 
-      // Update avatar người bình luận trong bài viết đó
       if (post.comments) {
         Object.keys(post.comments).forEach((cmtKey) => {
           if (post.comments[cmtKey].mssv === mssv) {
@@ -993,11 +926,10 @@ function capNhatAnhTatCaBaiDangCu(mssv, newAvatar) {
         });
       }
     });
-    database.ref().update(updates); // Cập nhật hàng loạt lên Firebase
+    database.ref().update(updates);
   });
 }
 
-// Chức năng: Hiển thị hộp thoại xác nhận, xóa thông tin đăng nhập khỏi LocalStorage và tải lại trang web.
 function dangXuatTaiKhoan() {
   if (confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
     localStorage.removeItem("current_logged_student");
@@ -1006,7 +938,7 @@ function dangXuatTaiKhoan() {
 }
 
 // =========================================
-// 👑 6. BANNER CAROUSEL HOẠT ĐỘNG THÔNG MINH
+// 👑 5. BANNER CAROUSEL HOẠT ĐỘNG THÔNG MINH
 // =========================================
 (function () {
   let isMobile = window.innerWidth <= 768;
@@ -1048,11 +980,11 @@ function dangXuatTaiKhoan() {
     }
   });
 })();
+
 // ==========================================
-// 🌐 HỆ THỐNG ĐẾM & ĐỒNG BỘ SỐ NGƯỜI ONLINE (FIREBASE)
+// 🌐 6. HỆ THỐNG ĐẾM & ĐỒNG BỘ SỐ NGƯỜI ONLINE (FIREBASE)
 // ==========================================
 function updateOnlineStatus() {
-  // Nếu chưa đăng nhập, dùng một ID ngẫu nhiên làm khách (guest) để đếm
   let student = JSON.parse(localStorage.getItem("current_logged_student"));
   let userId =
     student && student.id
@@ -1061,51 +993,31 @@ function updateOnlineStatus() {
   let userName = student && student.name ? student.name : "Khách tham quan";
 
   let userRef = database.ref("online_users/" + userId);
-
-  // Khi người dùng tắt tab hoặc thoát web, tự động xóa khỏi danh sách online
   userRef.onDisconnect().remove();
-
-  // Ghi trạng thái online hiện tại kèm thời gian lên Database
   userRef.set({
     name: userName,
     lastSeen: firebase.database.ServerValue.TIMESTAMP,
   });
 }
 
-// Gọi hàm cập nhật online ngay khi load trang hoặc đăng nhập thành công
 document.addEventListener("DOMContentLoaded", function () {
   updateOnlineStatus();
 });
 
-// Lắng nghe Realtime từ Database để cập nhật số lượng liên tục giữa tất cả thiết bị
 database.ref("online_users").on("value", (snapshot) => {
-  let count = snapshot.numChildren(); // Đếm tổng số thiết bị/người đang kết nối
+  let count = snapshot.numChildren();
   let displayEl = document.getElementById("wau_count");
   if (displayEl) {
     displayEl.innerText = count;
   }
 });
-// =========================================
-// 🛑 HÀM NỘP BÀI SỚM
-// =========================================
-function nopBaiSom() {
-  if (confirm("Bạn có chắc chắn muốn nộp bài và xem kết quả không?")) {
-    if (typeof countdownSound !== "undefined") {
-      countdownSound.pause();
-      countdownSound.currentTime = 0;
-    }
-    ketthucbaithi();
-  }
-}
 
 // =========================================
-// 📊 THỐNG KÊ ADMIN & BIỂU ĐỒ TRUY CẬP REAL-TIME
+// 📊 7. THỐNG KÊ ADMIN & BIỂU ĐỒ TRUY CẬP REAL-TIME
 // =========================================
-
 let myAccessChart = null;
-let globalAccessLogs = {}; // Biến lưu trữ dữ liệu cache từ Firebase
+let globalAccessLogs = {};
 
-// 1. KIỂM TRA QUYỀN ADMIN ĐỂ HIỆN/ẨN TAB THỐNG KÊ
 function checkAdminPermission() {
   let adminBtn = document.getElementById("admin-stats-tab-btn");
   if (!adminBtn) return;
@@ -1125,29 +1037,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(checkAdminPermission, 500);
 });
 
-// Móc vào hàm showTab để khi admin bấm vào tab thống kê thì load dữ liệu
-const oldShowTabFunc = window.showTab;
-window.showTab = function (tab) {
-  if (typeof oldShowTabFunc === "function") {
-    oldShowTabFunc(tab);
-  }
-  if (tab === "admin-stats") {
-    if (
-      !currentStudent ||
-      (currentStudent.id !== "7277979906" &&
-        currentStudent.name !== "trung_admin")
-    ) {
-      alert("Bạn không có quyền truy cập khu vực này!");
-      showTab("home");
-      return;
-    }
-    loadAdminStatisticsData();
-  }
-};
-
-// 2. LẮNG NGHE DỮ LIỆU REAL-TIME TỪ FIREBASE CHO TOÀN BỘ TAB THỐNG KÊ
 function loadAdminStatisticsData() {
-  // Lắng nghe real-time node 'user_access_logs' (tự động cập nhật khi có người truy cập mới)
   database.ref("user_access_logs").on("value", (snapshot) => {
     globalAccessLogs = snapshot.val() || {};
     let now = Date.now();
@@ -1184,11 +1074,9 @@ function loadAdminStatisticsData() {
     if (el30d) el30d.innerText = count30d;
     if (el3m) el3m.innerText = count3m;
 
-    // Cập nhật lại biểu đồ ngay lập tức khi có dữ liệu mới đổ về
     updateAccessChart();
   });
 
-  // Lấy số lượng người đang online trực tuyến
   database.ref("online_users").on("value", (snapshot) => {
     let onlineNowEl = document.getElementById("stat-online-now");
     if (onlineNowEl) {
@@ -1198,9 +1086,8 @@ function loadAdminStatisticsData() {
 
   loadLiveActiveQuizUsers();
 }
-// 3. GHI NHẬN LƯỢT TRUY CẬP (Dùng Date.now() để nhận diện số liệu ngay lập tức)
+
 function logUserAccessActivity() {
-  // Lấy dữ liệu trực tiếp từ localStorage nếu biến toàn cục chưa sẵn sàng
   let student =
     currentStudent && currentStudent.id
       ? currentStudent
@@ -1212,36 +1099,34 @@ function logUserAccessActivity() {
   logRef.set({
     userId: student.id.trim(),
     name: student.name || "Học viên",
-    timestamp: Date.now(), // Dùng Date.now() để có số liệu dạng số ngay lập tức, không bị trễ server
+    timestamp: Date.now(),
   });
 }
 
-// 4. HÀM VẼ VÀ CẬP NHẬT BIỂU ĐỒ ĐƯỜNG THEO BỘ LỌC (NGÀY / THÁNG / 3 THÁNG)
 function updateAccessChart() {
   let filterSelect = document.getElementById("chart-time-filter");
   if (!filterSelect) return;
 
-  let filterType = filterSelect.value; // Lấy giá trị: '1d', '30d', '3m'
+  let filterType = filterSelect.value;
   let now = Date.now();
 
-  let intervalMs = 30 * 60 * 1000; // Mặc định 30 phút/mốc (cho ngày)
-  let totalSlots = 48; // 48 mốc trong 24 giờ
+  let intervalMs = 30 * 60 * 1000;
+  let totalSlots = 48;
   let startTime = now - 24 * 60 * 60 * 1000;
 
   if (filterType === "30d") {
-    totalSlots = 30; // 30 cột tương ứng 30 ngày
-    intervalMs = 24 * 60 * 60 * 1000; // 1 ngày/mốc
+    totalSlots = 30;
+    intervalMs = 24 * 60 * 60 * 1000;
     startTime = now - 30 * 24 * 60 * 60 * 1000;
   } else if (filterType === "3m") {
-    totalSlots = 12; // 12 mốc cho 3 tháng
-    intervalMs = 7 * 24 * 60 * 60 * 1000; // Khoảng 7 ngày/mốc
+    totalSlots = 12;
+    intervalMs = 7 * 24 * 60 * 60 * 1000;
     startTime = now - 90 * 24 * 60 * 60 * 1000;
   }
 
   let slotsData = new Array(totalSlots).fill(0);
   let slotLabels = [];
 
-  // Tạo nhãn thời gian trục X
   for (let i = 0; i < totalSlots; i++) {
     let slotTime = startTime + i * intervalMs;
     let d = new Date(slotTime);
@@ -1258,7 +1143,6 @@ function updateAccessChart() {
     }
   }
 
-  // Đổ dữ liệu từ biến cache `globalAccessLogs` vào các mốc trục Y
   Object.values(globalAccessLogs).forEach((log) => {
     let t = log.timestamp || 0;
     if (t >= startTime && t <= now) {
@@ -1274,12 +1158,10 @@ function updateAccessChart() {
 
   let ctx = canvasEl.getContext("2d");
 
-  // Hủy biểu đồ cũ nếu có để tránh lỗi đè khung vẽ
   if (myAccessChart) {
     myAccessChart.destroy();
   }
 
-  // Vẽ biểu đồ đường mới bằng Chart.js
   myAccessChart = new Chart(ctx, {
     type: "line",
     data: {
@@ -1311,7 +1193,6 @@ function updateAccessChart() {
   });
 }
 
-// 5. HIỆN THÔNG TIN CHI TIẾT HỌC VIÊN ĐANG LÀM BÀI REAL-TIME
 function loadLiveActiveQuizUsers() {
   let activeBox = document.getElementById("live-active-users-box");
   if (!activeBox) return;
@@ -1353,17 +1234,16 @@ function loadLiveActiveQuizUsers() {
     activeBox.innerHTML = html;
   });
 }
+
 function timKiemMonHoc() {
   let input = document.getElementById("inputTimKiem");
   let filter = input.value.toLowerCase().trim();
 
-  // Lấy container chứa danh sách và tất cả các nút môn học bên trong
   let container = document.querySelector(".subject-list");
   if (!container) return;
 
   let buttons = Array.from(container.getElementsByClassName("quiz-btn"));
 
-  // Sắp xếp lại vị trí: Môn nào khớp từ khóa sẽ được đẩy lên đầu
   buttons.sort((a, b) => {
     let textA = (a.textContent || a.innerText).toLowerCase();
     let textB = (b.textContent || b.innerText).toLowerCase();
@@ -1371,95 +1251,265 @@ function timKiemMonHoc() {
     let matchA = filter !== "" && textA.includes(filter);
     let matchB = filter !== "" && textB.includes(filter);
 
-    if (matchA && !matchB) return -1; // Đẩy A lên trước
-    if (!matchA && matchB) return 1; // Đẩy B lên trước
+    if (matchA && !matchB) return -1;
+    if (!matchA && matchB) return 1;
     return 0;
   });
 
-  // Cập nhật lại thứ tự các nút trên giao diện (hiệu ứng nảy lên đầu)
   buttons.forEach((btn) => container.appendChild(btn));
 
-  // Ẩn các nút không khớp từ khóa (nếu muốn gõ đến đâu gọn đến đấy)
   buttons.forEach((btn) => {
     let text = (btn.textContent || btn.innerText).toLowerCase();
     if (filter === "" || text.includes(filter)) {
-      btn.style.display = ""; // Hiện lại
+      btn.style.display = "";
     } else {
-      btn.style.display = "none"; // Ẩn đi nếu không khớp
+      btn.style.display = "none";
     }
   });
 }
-// Danh sách các môn học của bạn
-let danhSachMon = [
-  "Tư tưởng Hồ Chí Minh",
-  "Quản Trị Học",
-  "Kỹ Năng Khởi Nghiệp Và Lãnh Đạo",
-  "Quản Lý Dự Án",
-  "Lịch Sử Đảng",
-  "Triết học Mác - Lênin", // Bạn có thể thêm các môn khác vào đây
-];
 
-// Hàm vẽ danh sách môn ra màn hình
-function hienThiDanhSach(arr) {
-  let container = document.getElementById("danhSachMonHoc");
-  container.innerHTML = ""; // Xóa danh sách cũ
-
-  arr.forEach((mon) => {
-    let btn = document.createElement("button");
-    btn.className = "btn-mon";
-    btn.innerText = mon;
-    // Thêm một chút CSS inline cho nút để giống ảnh của bạn
-    btn.style.cssText =
-      "width: 100%; padding: 15px; margin-bottom: 10px; background-color: #1e3a8a; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; text-align: left; padding-left: 20px;";
-
-    // Sự kiện khi bấm vào môn học
-    btn.onclick = function () {
-      alert("Bạn đã chọn môn: " + mon);
-      // Code chuyển trang hoặc mở môn học ở đây
-    };
-
-    container.appendChild(btn);
-  });
+// =========================================
+// 🛒 8. CHỢ PHENIKAA (MODAL & FIREBASE)
+// =========================================
+function moModalDangSanPham() {
+  document.getElementById("modalDangSanPham").style.display = "flex";
 }
 
-// Chạy lần đầu khi load trang
-hienThiDanhSach(danhSachMon);
+function dongModalDangSanPham() {
+  document.getElementById("modalDangSanPham").style.display = "none";
+}
 
-// Hàm tìm kiếm và tự động đưa môn khớp lên đầu
-function locMonHoc() {
-  let keyword = document
-    .getElementById("inputTimKiem")
-    .value.toLowerCase()
-    .trim();
+function xacNhanDangSanPham() {
+  const ten = document.getElementById("tenSanPham").value;
+  const gia = document.getElementById("giaSanPham").value;
+  const anh =
+    document.getElementById("linkAnhSanPham").value ||
+    "https://via.placeholder.com/150";
+  const mota = document.getElementById("moTaSanPham").value;
 
-  if (keyword === "") {
-    hienThiDanhSach(danhSachMon); // Nếu không nhập gì thì hiện nguyên bản
+  if (!ten || !gia) {
+    alert("Vui lòng nhập tên và giá sản phẩm!");
     return;
   }
 
-  // Tách danh sách thành 2 phần: Môn khớp từ khóa (đẩy lên đầu) và Môn khác (để ở dưới)
-  let monKhop = danhSachMon.encode ? [] : [];
-  let monKhac = [];
+  const productData = {
+    ten: ten,
+    gia: gia,
+    anh: anh,
+    mota: mota,
+    nguoiDang: "Thành viên Phenikaa",
+    thoiGian: Date.now(),
+  };
 
-  danhSachMon.forEach((mon) => {
-    if (mon.toLowerCase().includes(keyword)) {
-      monKhop.push(mon); // Khớp thì cho lên nhóm đầu
-    } else {
-      monKhac.push(mon); // Không khớp cho xuống nhóm sau
-    }
-  });
+  firebase
+    .database()
+    .ref("cho_phenikaa")
+    .push(productData)
+    .then(() => {
+      alert("Đăng sản phẩm thành công!");
+      dongModalDangSanPham();
+      document.getElementById("tenSanPham").value = "";
+      document.getElementById("giaSanPham").value = "";
+      document.getElementById("linkAnhSanPham").value = "";
+      document.getElementById("moTaSanPham").value = "";
+    })
+    .catch((error) => {
+      alert("Lỗi khi đăng: " + error.message);
+    });
+}
 
-  // Gộp nhóm khớp lên trước, nhóm khác xuống sau
-  let ketQuaSapXep = [...monKhop, ...monKhac];
+function taiDanhSachSanPham() {
+  const luoiSanPham = document.getElementById("luoiSanPham");
+  if (!luoiSanPham) return;
 
-  // Vẽ lại giao diện với thứ tự mới
-  hienThiDanhSach(ketQuaSapXep);
+  firebase
+    .database()
+    .ref("cho_phenikaa")
+    .on("value", (snapshot) => {
+      luoiSanPham.innerHTML = "";
+      const data = snapshot.val();
 
-  // Giữ lại focus cho ô input để không bị mất con trỏ chuột khi đang gõ
-  let inputElem = document.getElementById("inputTimKiem");
-  inputElem.focus();
-  // Đưa con trỏ về cuối chữ đang gõ
-  let val = inputElem.value;
-  inputElem.value = "";
-  inputElem.value = val;
+      if (!data) {
+        luoiSanPham.innerHTML =
+          '<p style="grid-column: 1/-1; text-align: center; color: #777;">Chưa có sản phẩm nào được đăng bán.</p>';
+        return;
+      }
+
+      Object.keys(data).forEach((key) => {
+        const sp = data[key];
+        const card = document.createElement("div");
+        card.className = "san-pham-card";
+        card.innerHTML = `
+                <img src="${sp.anh}" class="san-pham-img" alt="Ảnh sản phẩm">
+                <div class="san-pham-body">
+                    <h3 class="san-pham-title">${sp.ten}</h3>
+                    <div class="san-pham-price">${sp.gia}</div>
+                    <p class="san-pham-desc">${sp.mota}</p>
+                    <button style="width: 100%; background: #007bff; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;" onclick="alert('Liên hệ người bán qua sđt/fb nội bộ trường nhé!')">Xem Chi Tiết</button>
+                </div>
+            `;
+        luoiSanPham.appendChild(card);
+      });
+    });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  taiDanhSachSanPham();
+});
+let base64AnhSanPham = "";
+
+function chonAnhSanPham(input) {
+  if (input.files && input.files[0]) {
+    let reader = new FileReader();
+    reader.onload = function (e) {
+      base64AnhSanPham = e.target.result;
+      document.getElementById("ten-file-anh").innerText =
+        "Đã chọn: " + input.files[0].name;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function xacNhanDangSanPham() {
+  const ten = document.getElementById("tenSanPham").value.trim();
+  const gia = document.getElementById("giaSanPham").value.trim();
+  const linkUrl =
+    document.getElementById("linkChiTietSanPham").value.trim() || "#";
+  const mota = document.getElementById("moTaSanPham").value.trim();
+  const anh = base64AnhSanPham || "https://via.placeholder.com/150";
+
+  if (!ten || !gia) {
+    alert("Vui lòng nhập tên và giá sản phẩm!");
+    return;
+  }
+
+  const nguoiBan =
+    typeof currentStudent !== "undefined" && currentStudent.name
+      ? currentStudent.name
+      : "Thành viên Phenikaa";
+
+  const productData = {
+    ten: ten,
+    gia: gia,
+    link: linkUrl,
+    anh: anh,
+    mota: mota,
+    nguoiDang: currentStudent ? currentStudent.name : "Thành viên Phenikaa",
+    mssv: currentStudent ? currentStudent.id : "", // Lưu MSSV để đối chiếu quyền xóa
+    thoiGian: Date.now(),
+  };
+
+  firebase
+    .database()
+    .ref("cho_phenikaa")
+    .push(productData)
+    .then(() => {
+      alert("Đăng sản phẩm lên chợ thành công!");
+      dongModalDangSanPham();
+      // Reset form
+      document.getElementById("tenSanPham").value = "";
+      document.getElementById("giaSanPham").value = "";
+      document.getElementById("linkChiTietSanPham").value = "";
+      document.getElementById("moTaSanPham").value = "";
+      document.getElementById("ten-file-anh").innerText = "";
+      base64AnhSanPham = "";
+    })
+    .catch((error) => {
+      alert("Lỗi khi đăng: " + error.message);
+    });
+}
+// Hàm hỗ trợ định dạng giá tiền tự động thêm dấu chấm và chữ đ
+function formatTienTe(str) {
+  // Lọc lấy các ký tự số
+  let numbers = str.replace(/\D/g, "");
+  if (!numbers) return str; // Nếu người dùng nhập chữ hoàn toàn thì giữ nguyên
+  // Định dạng thêm dấu chấm phân cách hàng nghìn
+  let formatted = Number(numbers).toLocaleString("vi-VN");
+  return formatted + "đ";
+}
+// Hàm tải danh sách và gán link cho nút Xem Chi Tiết
+function taiDanhSachSanPham() {
+  const luoiSanPham = document.getElementById("luoiSanPham");
+  if (!luoiSanPham) return;
+
+  firebase
+    .database()
+    .ref("cho_phenikaa")
+    .on("value", (snapshot) => {
+      luoiSanPham.innerHTML = "";
+      const data = snapshot.val();
+
+      if (!data) {
+        luoiSanPham.innerHTML =
+          '<p style="grid-column: 1/-1; text-align: center; color: #777;">Chưa có sản phẩm nào được đăng bán.</p>';
+        return;
+      }
+
+      // Lấy thông tin tài khoản đang đăng nhập hiện tại
+      let currentUser =
+        typeof currentStudent !== "undefined" ? currentStudent : null;
+      let currentId =
+        currentUser && currentUser.id ? currentUser.id.trim() : "";
+      let currentName =
+        currentUser && currentUser.name ? currentUser.name.trim() : "";
+
+      // Kiểm tra có phải Admin không (dựa vào MSSV hoặc tên admin của em)
+      let isAdmin = currentId === "7277979906" || currentName === "trung_admin";
+
+      Object.keys(data).forEach((key) => {
+        const sp = data[key];
+        const card = document.createElement("div");
+        card.className = "san-pham-card";
+        card.style.position = "relative"; // Để định vị nút xóa ở góc
+
+        const actionClick =
+          sp.link && sp.link !== "#"
+            ? `window.open('${sp.link}', '_blank')`
+            : `alert('Người bán chưa đính kèm link chi tiết, hãy liên hệ trực tiếp nội bộ trường nhé!')`;
+
+        let giaHienThi = formatTienTe(sp.gia);
+
+        // Kiểm tra quyền xóa: Nếu là Admin HOẶC là chính chủ người đăng bài
+        let isOwner =
+          (sp.mssv && sp.mssv.trim() === currentId) ||
+          sp.nguoiDang === currentName;
+        let nutXoaHtml = "";
+
+        if (isAdmin || isOwner) {
+          nutXoaHtml = `
+          <button onclick="xoaSanPhamCho('${key}')" title="Xóa sản phẩm" style="position: absolute; top: 8px; right: 8px; background: rgba(220, 53, 69, 0.85); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+            ✕
+          </button>
+        `;
+        }
+
+        card.innerHTML = `
+        ${nutXoaHtml}
+        <img src="${sp.anh}" class="san-pham-img" alt="Ảnh sản phẩm">
+        <div class="san-pham-body">
+            <h3 class="san-pham-title">${sp.ten}</h3>
+            <div class="san-pham-price">${giaHienThi}</div>
+            <p class="san-pham-desc">${sp.mota}</p>
+            <p style="font-size: 11px; color: #888; margin-bottom: 8px;">Đăng bởi: ${sp.nguoiDang}</p>
+            <button style="width: 100%; background: #007bff; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;" onclick="${actionClick}">Xem Chi Tiết / Liên Hệ</button>
+        </div>
+      `;
+        luoiSanPham.appendChild(card);
+      });
+    });
+}
+// Hàm xử lý xóa sản phẩm khỏi Firebase
+function xoaSanPhamCho(productKey) {
+  if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi chợ không?")) {
+    firebase
+      .database()
+      .ref("cho_phenikaa/" + productKey)
+      .remove()
+      .then(() => {
+        alert("Đã xóa sản phẩm thành công!");
+      })
+      .catch((error) => {
+        alert("Lỗi khi xóa: " + error.message);
+      });
+  }
 }
