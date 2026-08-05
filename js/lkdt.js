@@ -55,11 +55,10 @@ const lkdt = {
       options: {
         A: "Không có electron tự do",
         B: "Các electron tự do được tạo ra do năng lượng nhiệt",
-        C: "Chỉ có lỗ trống",
+        C: "Các đáp án (B) và (D)",
         D: "Số electron bằng số lỗ trống",
-        E: "Các đáp án (B) và (D)",
       },
-      answer: "E",
+      answer: "C",
     },
     {
       q: "Câu 7: Quá trình thêm tạp chất vào bán dẫn nội tại được gọi là",
@@ -309,10 +308,9 @@ const lkdt = {
         A: "Một linh kiện đơn cực (unipolar device)",
         B: "Một linh kiện điều khiển bằng điện áp (voltage-controlled device)",
         C: "Một linh kiện điều khiển bằng dòng điện (current-controlled device)",
-        D: "Các đáp án (A) và (C)",
-        E: "Các đáp án (A) và (B)",
+        D: "Các đáp án (A) và (B)",
       },
-      answer: "E",
+      answer: "D",
     },
     {
       q: "Câu 33: Kênh dẫn (channel) của JFET nằm giữa:",
