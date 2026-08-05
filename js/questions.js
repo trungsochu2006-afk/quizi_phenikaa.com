@@ -11,5 +11,6 @@ const quizDatabase = {
   "Kinh Tế Chính Trị Mác Lê Nin": ktmaclenin,
   "Chủ Nghĩa Khoa Học Xã Hội": cnkhxh,
   "Triết 3 Tín": triet3tin,
+  "Linh Kiện Điện Tử": lkdt,
 };
 let originalQuestions = []; // Biến chứa câu hỏi của chương đang làm
