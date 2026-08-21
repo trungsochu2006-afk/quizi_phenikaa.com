@@ -62,12 +62,39 @@ function showTab(tabId) {
     s.classList.remove("active");
     s.style.display = "none";
   });
+  // Ẩn luôn các tab-content (khung VSTEP)
+  document.querySelectorAll(".tab-content").forEach((s) => {
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
 
   // 2. Hiển thị section mục tiêu
   let target = document.getElementById(tabId);
   if (target) {
     target.classList.add("active");
     target.style.display = "block";
+  }
+
+  // 🔥 XỬ LÝ RIÊNG KHI BẤM VÀO TAB VSTEP B1 (ĐỂ TRỐNG - CHỈ HIỆN BANNER & NÚT KỸ NĂNG)
+  if (tabId === "onthivstep") {
+    // Xóa trạng thái active của các nút kỹ năng lớn
+    document
+      .querySelectorAll(".vstep-skill-btn")
+      .forEach((btn) => btn.classList.remove("active-skill"));
+
+    // Xóa sạch các nút part ở thanh ngang
+    let partContainer = document.getElementById("vstep-part-container");
+    if (partContainer) partContainer.innerHTML = "";
+
+    // Ẩn toàn bộ khung câu hỏi / bài tập / reading
+    let normalLayout = document.getElementById("vstep-normal-layout");
+    let readingLayout = document.getElementById("reading-layout-container");
+    if (normalLayout) normalLayout.style.display = "none";
+    if (readingLayout) readingLayout.style.display = "none";
+
+    // Hiển thị banner chào mừng lên
+    let banner = document.getElementById("vstep-welcome-banner");
+    if (banner) banner.style.display = "block";
   }
 
   // 3. Nếu rời khỏi tab quiz thì tắt nhạc và ẩn nút nộp sớm
@@ -1085,6 +1112,20 @@ function loadAdminStatisticsData() {
   });
 
   loadLiveActiveQuizUsers();
+  // 🔥 NHÉT ĐOẠN NÀY VÀO ĐÂY (BÊN TRONG HÀM loadAdminStatisticsData)
+  database.ref("active_vstep_sessions").on("value", (snapshot) => {
+    let vstepOnlineEl = document.getElementById("stat-vstep-online");
+    if (vstepOnlineEl) {
+      vstepOnlineEl.innerText = snapshot.numChildren();
+    }
+  });
+  // 2. Thống kê tổng số lượt đã làm/nộp bài VSTEP (giả sử anh lưu kết quả nộp bài ở node 'vstep_results' hoặc tương tự trên Firebase)
+  database.ref("vstep_results").on("value", (snapshot) => {
+    let vstepCompletedEl = document.getElementById("stat-vstep-completed");
+    if (vstepCompletedEl) {
+      vstepCompletedEl.innerText = snapshot.numChildren();
+    }
+  });
 }
 
 function logUserAccessActivity() {
@@ -1513,3 +1554,564 @@ function xoaSanPhamCho(productKey) {
       });
   }
 }
+let currentSkill = "Listening";
+let currentPart = "Part 1";
+let currentVstepIndex = 0;
+let vstepUserAnswers = {};
+let isSubmitted = false;
+
+function initVstepSystem() {
+  // Đừng gọi switchVstepSkill("Listening") ở đây nữa!
+  // Xóa hoặc comment dòng đó đi:
+  // switchVstepSkill("Listening");
+
+  // Chỉ nên hiện danh sách các kỹ năng thôi, không chọn trước kỹ năng nào cả
+  console.log("Hệ thống VSTEP đã sẵn sàng, chờ người dùng chọn kỹ năng...");
+}
+
+function switchVstepSkill(skillName) {
+  currentSkill = skillName;
+  isSubmitted = false;
+  vstepUserAnswers = {};
+
+  // Vẫn ẩn khung bài tập và hiện banner khi mới chọn kỹ năng
+  document.getElementById("vstep-normal-layout").style.display = "none";
+  let readingLayout = document.getElementById("reading-layout-container");
+  if (readingLayout) readingLayout.style.display = "none";
+
+  let banner = document.getElementById("vstep-welcome-banner");
+  if (banner) banner.style.display = "block";
+
+  // Đổi style active cho nút Kỹ năng được bấm
+  document
+    .querySelectorAll(".vstep-skill-btn")
+    .forEach((btn) => btn.classList.remove("active-skill"));
+  let activeBtn = document.getElementById(`btn-skill-${skillName}`);
+  if (activeBtn) activeBtn.classList.add("active-skill");
+
+  // Load danh sách các Part ra thanh ngang cho người dùng chọn
+  let partsObj = vstepDatabase[skillName] || {};
+  let parts = Object.keys(partsObj);
+  let partContainer = document.getElementById("vstep-part-container");
+
+  if (partContainer) {
+    partContainer.innerHTML = "";
+    parts.forEach((partName) => {
+      let btn = document.createElement("button");
+      btn.className = "vstep-part-btn"; // Không auto active Part 1 nữa
+      btn.innerText = partName;
+      btn.onclick = () => switchVstepPart(partName, btn);
+      partContainer.appendChild(btn);
+    });
+    // ❌ XÓA SẠCH LỆNH TỰ ĐỘNG GỌI switchVstepPart(parts[0]) Ở ĐÂY!
+  }
+}
+function switchVstepPart(partName, btnElement) {
+  currentPart = partName;
+
+  // 🔥 Ẩn banner khi người dùng chọn Part
+  document.getElementById("vstep-welcome-banner").style.display = "none";
+
+  // Hiển thị khung bài tập
+  if (currentSkill === "Reading") {
+    document.getElementById("reading-layout-container").style.display = "block";
+    switchReadingMode("reading");
+  } else {
+    document.getElementById("vstep-normal-layout").style.display = "block";
+
+    // Xử lý hiện khung Audio/Media cho Listening/Speaking
+    let mediaBox = document.getElementById("vstep-top-media-box");
+    if (mediaBox) {
+      if (currentSkill === "Listening" || currentSkill === "Speaking") {
+        mediaBox.style.display = "block";
+        // Cập nhật tiêu đề media nếu cần
+        document.getElementById("media-title").innerText =
+          currentSkill === "Listening"
+            ? "🎧 Luyện Nghe (Listening Audio)"
+            : "🗣️ Luyện Nói (Speaking Audio)";
+      } else {
+        mediaBox.style.display = "none";
+      }
+    }
+  }
+
+  // Cập nhật trạng thái nút Part active
+  document
+    .querySelectorAll(".vstep-part-btn")
+    .forEach((b) => b.classList.remove("active-part"));
+  if (btnElement) btnElement.classList.add("active-part");
+
+  updatePartAudio();
+  updatePartTranscript();
+  renderVstepQuestion(0);
+}
+function updatePartAudio() {
+  let audioPlayer = document.getElementById("vstep-audio-source");
+  let audioContainer = document.getElementById("vstep-audio-element-box");
+
+  try {
+    let partData = vstepDatabase[currentSkill][currentPart];
+    if (partData && partData.audioSrc) {
+      audioPlayer.src = partData.audioSrc;
+      audioPlayer.load();
+      if (audioContainer) audioContainer.style.display = "block";
+    } else {
+      audioPlayer.pause();
+      if (audioContainer) audioContainer.style.display = "none"; // Ẩn nếu Part này không có audio
+    }
+  } catch (e) {
+    console.log("Không tìm thấy audio cho phần này");
+  }
+}
+
+function getActiveQuestions() {
+  try {
+    return vstepDatabase[currentSkill][currentPart].questions || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function renderVstepQuestion(index) {
+  currentVstepIndex = index;
+  const questions = getActiveQuestions();
+  if (questions.length === 0) return;
+
+  const qData = questions[index];
+
+  // 🔥 Lựa chọn chính xác container dựa vào kỹ năng hiện tại
+  let containerId =
+    currentSkill === "Reading"
+      ? "reading-question-container"
+      : "vstep-question-container";
+  const container = document.getElementById(containerId);
+
+  if (!container) return;
+
+  // 🔥 Kiểm tra quyền Admin cho Writing và Speaking
+  let isAdmin = false;
+  if (typeof currentStudent !== "undefined" && currentStudent) {
+    if (
+      currentStudent.id === "7277979906" ||
+      currentStudent.name === "trung_admin"
+    ) {
+      isAdmin = true;
+    }
+  }
+
+  if (currentSkill === "Writing" || currentSkill === "Speaking") {
+    if (isAdmin) {
+      container.innerHTML = `
+                <div style="margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #0066ff;">🛠️ [GIAO DIỆN ADMIN] - Nhập/Cập nhật Template:</div>
+                <div style="margin-bottom: 10px; font-weight: 600;">${qData.q}</div>
+                <textarea id="vstep-writing-area" 
+                    style="width: 100%; height: 300px; padding: 15px; border: 2px solid #0066ff; border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box;"
+                    placeholder="Nhập phần văn bản / template cho học viên..."></textarea>
+                <div style="margin-top: 8px; color: #28a745; font-size: 13px; font-weight: bold;">✔ Quyền Admin: Có quyền chỉnh sửa.</div>
+            `;
+    } else {
+      container.innerHTML = `
+                <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px;">${qData.q}</div>
+                <div style="width: 100%; min-height: 220px; max-height: 350px; overflow-y: auto; padding: 15px; border: 2px solid #ced4da; border-radius: 10px; background: #f8f9fa; font-size: 15px; box-sizing: border-box; white-space: pre-wrap; color: #333;"
+                >${qData.templateContent || "Phần template này hiện chưa có nội dung hoặc đang được cập nhật bởi Admin."}</div>
+                <div style="margin-top: 8px; color: #dc3545; font-size: 13px;">🔒 Tài khoản học viên: Chỉ có quyền xem tài liệu/template.</div>
+            `;
+    }
+  } else {
+    // Trắc nghiệm cho Listening và Reading
+    let optionsHtml = "";
+    for (let key in qData.options) {
+      let optionStyle = "border: 2px solid #e1e4e8; background: #fff;";
+      let letterBg = "background: #f0f2f5; color: #444;";
+
+      if (isSubmitted) {
+        if (key === qData.answer) {
+          optionStyle = "border: 2px solid #28a745; background: #d4edda;";
+          letterBg = "background: #28a745; color: white;";
+        } else if (vstepUserAnswers[index] === key && key !== qData.answer) {
+          optionStyle = "border: 2px solid #dc3545; background: #f8d7da;";
+          letterBg = "background: #dc3545; color: white;";
+        }
+      } else if (vstepUserAnswers[index] === key) {
+        optionStyle = "border: 2px solid #0066ff; background: #f0f6ff;";
+        letterBg = "background: #0066ff; color: white;";
+      }
+
+      optionsHtml += `
+                <div onclick="${isSubmitted ? "" : "selectVstepOption(" + index + ",'" + key + "')"}" 
+                     style="${optionStyle} border-radius: 10px; padding: 12px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; ${letterBg} display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; flex-shrink: 0; font-size: 14px;">${key}</div>
+                    <div style="font-size: 14px; color: #333;">${qData.options[key]}</div>
+                </div>
+            `;
+    }
+
+    let explanationHtml =
+      isSubmitted && qData.explanation
+        ? `
+            <button class="vstep-explain-btn" onclick="toggleVstepExplanation(${index})">💡 Xem giải thích chi tiết</button>
+            <div id="vstep-explain-${index}" class="vstep-explanation-box" style="display:none; margin-top:10px; padding:12px; background:#e7f5ff; border-left:4px solid #1c7ed6; border-radius:6px; font-size:14px;">
+                <b>Lời giải:</b> ${qData.explanation}
+            </div>
+        `
+        : "";
+
+    container.innerHTML = `
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">${qData.q}</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">${optionsHtml}</div>
+            ${explanationHtml}
+        `;
+  }
+
+  updateVstepPagination();
+  updatePartTranscript();
+}
+function selectVstepOption(qIndex, optionKey) {
+  if (isSubmitted) return;
+  vstepUserAnswers[qIndex] = optionKey;
+  renderVstepQuestion(qIndex);
+}
+
+function updateVstepPagination() {
+  const questions = getActiveQuestions();
+  const pagination = document.getElementById("vstep-pagination");
+  let html = "";
+  for (let i = 0; i < questions.length; i++) {
+    let isActive =
+      i === currentVstepIndex
+        ? "border: 2px solid #000;"
+        : "border: 1px solid #ddd;";
+    let bgStyle = "background: #fff; color: #555;";
+
+    if (isSubmitted) {
+      if (vstepUserAnswers[i] === questions[i].answer) {
+        bgStyle = "background: #28a745; color: white;";
+      } else {
+        bgStyle = "background: #dc3545; color: white;";
+      }
+    } else if (vstepUserAnswers[i]) {
+      bgStyle = "background: #0066ff; color: white;";
+    }
+
+    html += `<button style="width: 35px; height: 35px; border-radius: 50%; ${bgStyle} ${isActive} cursor: pointer; font-weight: 600;" onclick="renderVstepQuestion(${i})">${i + 1}</button>`;
+  }
+  pagination.innerHTML = html;
+}
+
+function submitVstepQuiz() {
+  const questions = getActiveQuestions();
+  if (questions.length === 0) return;
+
+  let score = 0;
+  questions.forEach((q, idx) => {
+    if (vstepUserAnswers[idx] === q.answer) {
+      score++;
+    }
+  });
+
+  isSubmitted = true;
+  renderVstepQuestion(currentVstepIndex);
+  alert(
+    `Đã nộp bài phần ${currentSkill} - ${currentPart}!\nSố câu đúng: ${score}/${questions.length}`,
+  );
+}
+function updatePartAudio() {
+  let audioPlayer = document.getElementById("vstep-audio-source");
+  let audioContainer = document.getElementById("vstep-top-media-box");
+
+  try {
+    let partData = vstepDatabase[currentSkill][currentPart];
+    if (partData && partData.audioSrc && partData.audioSrc.trim() !== "") {
+      audioPlayer.src = partData.audioSrc;
+      audioPlayer.load();
+      audioContainer.style.display = "block"; // Hiển thị khung audio khi có file
+    } else {
+      audioPlayer.pause();
+      audioPlayer.src = "";
+      // Nếu là Listening hoặc Speaking mà chưa có file thì vẫn hiện khung thông báo hoặc ẩn tùy ý
+      if (currentSkill === "Listening" || currentSkill === "Speaking") {
+        audioContainer.style.display = "block";
+      } else {
+        audioContainer.style.display = "none";
+      }
+    }
+  } catch (e) {
+    console.log("Lỗi tải audio cho phần này:", e);
+  }
+}
+function switchVstepSkill(skillName) {
+  currentSkill = skillName;
+  isSubmitted = false;
+  vstepUserAnswers = {};
+
+  // Đổi style active cho nút Kỹ năng
+  document
+    .querySelectorAll(".vstep-skill-btn")
+    .forEach((btn) => btn.classList.remove("active-skill"));
+  let activeBtn = document.getElementById(`btn-skill-${skillName}`);
+  if (activeBtn) activeBtn.classList.add("active-skill");
+
+  // 🔥 PHÂN LUỒNG GIAO DIỆN QUAN TRỌNG
+  let normalLayout = document.getElementById("vstep-normal-layout");
+  let readingLayout = document.getElementById("reading-layout-container");
+
+  if (skillName === "Reading") {
+    if (normalLayout) normalLayout.style.display = "none";
+    if (readingLayout) {
+      readingLayout.style.display = "block"; // Ép khung 2 cột hiện ra
+    }
+    switchReadingMode("reading"); // Nạp nội dung bài đọc vào cột trái
+  } else {
+    if (normalLayout) normalLayout.style.display = "block";
+    if (readingLayout) readingLayout.style.display = "none";
+
+    // Xử lý ẩn hiện audio cho Listening/Speaking
+    let mediaBox = document.getElementById("vstep-top-media-box");
+    if (mediaBox) {
+      if (skillName === "Listening" || skillName === "Speaking") {
+        mediaBox.style.display = "block";
+      } else {
+        mediaBox.style.display = "none";
+      }
+    }
+  }
+
+  // Load danh sách các Part (Giữ nguyên logic cũ của anh)
+  let partsObj = vstepDatabase[skillName] || {};
+  let parts = Object.keys(partsObj);
+  let partContainer = document.getElementById("vstep-part-container");
+  if (partContainer) {
+    partContainer.innerHTML = "";
+    parts.forEach((partName, idx) => {
+      let btn = document.createElement("button");
+      btn.className = `vstep-part-btn ${idx === 0 ? "active-part" : ""}`;
+      btn.innerText = partName;
+      btn.onclick = () => switchVstepPart(partName, btn);
+      partContainer.appendChild(btn);
+    });
+    if (parts.length > 0) {
+      switchVstepPart(parts[0]);
+    }
+  }
+}
+function updatePartAudio() {
+  let audioPlayer = document.getElementById("vstep-audio-source");
+  let container = document.getElementById("vstep-top-media-box");
+
+  if (!audioPlayer) return;
+
+  // Chỉ hiện khung audio khi ở phần Listening
+  if (currentSkill !== "Listening") {
+    if (container) container.style.display = "none";
+    audioPlayer.pause();
+    return;
+  }
+
+  if (container) container.style.display = "block";
+
+  try {
+    let partData = vstepDatabase[currentSkill][currentPart];
+    if (partData && partData.audioSrc) {
+      // 🔥 CÁCH ÉP TRÌNH DUYỆT NHẬN SOURCE TRỰC TIẾP
+      audioPlayer.pause();
+      audioPlayer.innerHTML = `<source src="${partData.audioSrc}" type="audio/mpeg">`;
+      audioPlayer.load(); // Bắt buộc trình duyệt nạp lại từ đầu
+      console.log("Đã ép load thành công audio:", partData.audioSrc);
+    }
+  } catch (e) {
+    console.log("Lỗi load audio:", e);
+  }
+}
+function toggleWordDrawer() {
+  let drawer = document.getElementById("vstep-word-drawer");
+  let overlay = document.getElementById("vstep-drawer-overlay");
+
+  if (drawer && overlay) {
+    drawer.classList.toggle("open");
+    overlay.classList.toggle("open");
+    // Nạp lại dữ liệu cho chắc ăn khi vừa mở ngăn kéo ra
+    if (drawer.classList.contains("open")) {
+      updatePartTranscript();
+    }
+  }
+}
+
+// Hàm tự động cập nhật nội dung vào ngăn kéo theo Part hiện tại
+function updatePartTranscript() {
+  let drawerContentBox = document.getElementById("drawer-content-box");
+  if (!drawerContentBox) return;
+
+  let partData = vstepDatabase[currentSkill]
+    ? vstepDatabase[currentSkill][currentPart]
+    : null;
+
+  if (partData && (partData.transcript || partData.translation)) {
+    drawerContentBox.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #0066ff; margin-top: 0; border-bottom: 2px solid #0066ff; padding-bottom: 5px;">🇬🇧 Transcript (Tiếng Anh)</h4>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid #e9ecef;">
+                    ${partData.transcript || "Chưa có nội dung."}
+                </div>
+            </div>
+            <div>
+                <h4 style="color: #28a745; margin-top: 0; border-bottom: 2px solid #28a745; padding-bottom: 5px;">🇻🇳 Bản Dịch (Tiếng Việt)</h4>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid #e9ecef;">
+                    ${partData.translation || "Chưa có bản dịch."}
+                </div>
+            </div>
+        `;
+  } else {
+    drawerContentBox.innerHTML = `<p style="color: #777; text-align: center; margin-top: 20px;">Phần này không có tài liệu đi kèm.</p>`;
+  }
+}
+// Hàm vẽ thanh gạt và nội dung lấy thẳng từ vstepDatabase
+function updatePartTranscript() {
+  let drawerContentBox = document.getElementById("drawer-content-box");
+  if (!drawerContentBox) return;
+
+  let partData =
+    vstepDatabase[currentSkill] && vstepDatabase[currentSkill][currentPart]
+      ? vstepDatabase[currentSkill][currentPart]
+      : null;
+
+  if (partData && (partData.transcript || partData.translation)) {
+    drawerContentBox.innerHTML = `
+            <!-- Thanh gạt chọn chỉ cần ấn vào chữ -->
+            <div class="transcript-toggle-container">
+                <button id="btn-sub-trans" class="transcript-toggle-btn active-toggle" onclick="switchTranscriptTab('transcript')">
+                    🇬🇧 Transcript
+                </button>
+                <button id="btn-sub-translat" class="transcript-toggle-btn" onclick="switchTranscriptTab('translation')">
+                    🇻🇳 Bản Dịch
+                </button>
+            </div>
+
+            <!-- Nội dung văn bản -->
+            <div id="box-sub-transcript" class="transcript-text-content" style="display: block;">
+                ${partData.transcript || "Chưa có nội dung Transcript."}
+            </div>
+            <div id="box-sub-translation" class="transcript-text-content" style="display: none;">
+                ${partData.translation || "Chưa có bản dịch."}
+            </div>
+        `;
+  } else {
+    drawerContentBox.innerHTML = `<p style="text-align:center; color:#777; margin-top:20px;">Phần này không có tài liệu/transcript đi kèm.</p>`;
+  }
+}
+
+// Hàm bấm vào chữ là chuyển ngay lập tức
+function switchTranscriptTab(type) {
+  let transBox = document.getElementById("box-sub-transcript");
+  let translatBox = document.getElementById("box-sub-translation");
+  let btnTrans = document.getElementById("btn-sub-trans");
+  let btnTranslat = document.getElementById("btn-sub-translat");
+
+  if (type === "transcript") {
+    transBox.style.display = "block";
+    translatBox.style.display = "none";
+    btnTrans.classList.add("active-toggle");
+    btnTranslat.classList.remove("active-toggle");
+  } else {
+    transBox.style.display = "none";
+    translatBox.style.display = "block";
+    btnTranslat.classList.add("active-toggle");
+    btnTrans.classList.remove("active-toggle");
+  }
+}
+// Biến lưu trạng thái đang xem Bài đọc hay Dịch
+let currentReadingView = "reading";
+
+function switchReadingMode(mode) {
+  currentReadingView = mode;
+  let pane = document.getElementById("reading-pane-content");
+  let btnRead = document.getElementById("btn-mode-reading");
+  let btnTrans = document.getElementById("btn-mode-translation");
+
+  // Lấy dữ liệu bài đọc của Part hiện tại từ vstepDatabase
+  let partData =
+    vstepDatabase["Reading"] && vstepDatabase["Reading"][currentPart]
+      ? vstepDatabase["Reading"][currentPart]
+      : null;
+
+  if (!pane) return;
+
+  if (!partData) {
+    pane.innerHTML = "Chưa có nội dung bài đọc cho phần này.";
+    return;
+  }
+
+  if (mode === "reading") {
+    pane.innerHTML =
+      partData.readingText || "Chưa có nội dung bài đọc tiếng Anh.";
+    if (btnRead) {
+      btnRead.style.background = "#0066ff";
+      btnRead.style.color = "white";
+    }
+    if (btnTrans) {
+      btnTrans.style.background = "#e9ecef";
+      btnTrans.style.color = "#333";
+    }
+  } else {
+    pane.innerHTML = partData.translationText || "Chưa có bản dịch tiếng Việt.";
+    if (btnTrans) {
+      btnTrans.style.background = "#0066ff";
+      btnTrans.style.color = "white";
+    }
+    if (btnRead) {
+      btnRead.style.background = "#e9ecef";
+      btnRead.style.color = "#333";
+    }
+  }
+}
+
+// Cập nhật lại hàm switchVstepSkill để kiểm tra nếu là Reading thì bật khung 2 cột này lên
+// (Đặt đoạn này vào trong hàm switchVstepSkill của bạn)
+function updateSkillLayoutDisplay() {
+  let readingLayout = document.getElementById("reading-layout-container");
+  let normalLayout = document.getElementById("vstep-normal-layout"); // Khung các kỹ năng khác (Listening, Writing...)
+
+  if (currentSkill === "Reading") {
+    if (readingLayout) readingLayout.style.display = "block";
+    // Ẩn các khung media/audio cũ nếu có
+    let audioBox = document.getElementById("vstep-top-media-box");
+    if (audioBox) audioBox.style.display = "none";
+
+    // Nạp dữ liệu văn bản Reading vào cột trái
+    switchReadingMode(currentReadingView);
+  } else {
+    if (readingLayout) readingLayout.style.display = "none";
+  }
+}
+function toggleVstepExplanation(index) {
+  let explainBox = document.getElementById(`vstep-explain-${index}`);
+  if (explainBox) {
+    if (
+      explainBox.style.display === "none" ||
+      explainBox.style.display === ""
+    ) {
+      explainBox.style.display = "block";
+    } else {
+      explainBox.style.display = "none";
+    }
+  }
+}
+// Giả sử bạn có các nút bấm để chọn Part
+function showPart(partId) {
+  // Bước 1: Ẩn tất cả các phần tử có class 'part-content'
+  const parts = document.querySelectorAll(".part-content");
+  parts.forEach((part) => {
+    part.style.display = "none";
+  });
+
+  // Bước 2: Hiển thị đúng phần tử được chọn
+  const selectedPart = document.getElementById(partId);
+  if (selectedPart) {
+    selectedPart.style.display = "block";
+  }
+}
+// 🔥 BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ KHI F5 NÓ MỚI HIỆN TRANG CHỦ
+window.addEventListener("DOMContentLoaded", function () {
+  showTab("home");
+});
+// Gọi khởi chạy khi mở tab VSTEP B1 (đảm bảo trong hàm showTab của anh đã gọi initVstepSystem hoặc renderVstepQuestion)
+renderVstepQuestion(0);

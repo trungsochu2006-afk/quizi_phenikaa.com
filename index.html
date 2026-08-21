@@ -219,7 +219,7 @@
 
     <div
       id="home"
-      class="section active"
+      class="section"
       style="width: 100%; margin: 0; padding: 0; clear: both; user-select: none"
     >
       <div id="carousel-container-pc" class="banner-box">
@@ -284,6 +284,16 @@
               0
             </p>
           </div>
+          <!-- 🔥 DÁN Ô NÀY VÀO ĐÂY (NẰM CẠNH CÁC Ô KHÁC TRONG PHẦN ADMIN-STATS) -->
+    <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; text-align: center;">
+        <h4 style="margin: 0; color: #0277bd">Đang làm VSTEP</h4>
+        <p id="stat-vstep-online" style="font-size: 24px; font-weight: bold; margin: 10px 0 0; color: #01579b;">0</p>
+    </div>
+    <!-- Ô 2: Đã làm VSTEP (Tổng số lượt hoàn thành) -->
+<div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+    <h4 style="margin: 0; color: #0288d1">Đã làm VSTEP</h4>
+    <p id="stat-vstep-completed" style="font-size: 24px; font-weight: bold; margin: 10px 0 0; color: #01579b;">0</p>
+</div>
           <div
             style="
               background: #e8f5e9;
@@ -522,55 +532,61 @@
               onclick="selectSubject('Tư tưởng Hồ Chí Minh')"
             >
               Tư tưởng Hồ Chí Minh
-            </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Quản Trị Học')">
               Quản Trị Học
-            </button>
+        </button>
             <button
               class="quiz-btn"
               onclick="selectSubject('Kỹ Năng Khởi Nghiệp Và Lãnh Đạo')"
             >
               Kỹ Năng Khởi Nghiệp Và Lãnh Đạo
-            </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Quản Lý Dự Án')">
               Quản Lý Dự Án
-            </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Lịch Sử Đảng')">
               Lịch Sử Đảng
-            </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Kinh Tế Vĩ Mô')">
               Kinh Tế Vĩ Mô
-            </button>
+        </button>
             <button
               class="quiz-btn"
               onclick="selectSubject('Triết Học Mác Lê Nin')"
             >
               Triết Học Mác Lê Nin
-            </button>
+        </button>
             <button
               class="quiz-btn"
               onclick="selectSubject('Kinh Tế Chính Trị Mác Lê Nin')"
             >
               Kinh Tế Chính Trị Mác Lê Nin
-            </button>
+        </button>
             <button
               class="quiz-btn"
               onclick="selectSubject('Cơ Khí Đại Cương')"
             >
               Cơ Khí Đại Cương
-            </button>
-            <button
+        </button>
+        <button
               class="quiz-btn"
               onclick="selectSubject('Chủ Nghĩa Khoa Học Xã Hội')"
             >
               Chủ Nghĩa Khoa Học Xã Hội
-            </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Triết 3 Tín')">
               Triết 3 Tín
-            </button>
-             </button>
+        </button>
+        </button>
             <button class="quiz-btn" onclick="selectSubject('Linh Kiện Điện Tử')">
               Linh Kiện Điện Tử
+                          </button>
+        <button
+              class="quiz-btn"
+              onclick="selectSubject('Kỹ Thuật Cảm Biến')"
+            >
+              Kỹ Thuật Cảm Biến
             </button>
           </div>
         </div>
@@ -726,8 +742,8 @@
       </div>
     </div>
 
-    <!-- ✅ KHUNG HIỂN THỊ CHỢ PHENIKAA ĐÃ ĐƯỢC ĐẶT RA NGOÀI ĐỂ HIỆN THỊ CHUẨN XÁC -->
-    <div
+<!-- ✅ KHUNG HIỂN THỊ CHỢ PHENIKAA ĐÃ ĐƯỢC ĐẶT RA NGOÀI ĐỂ HIỆN THỊ CHUẨN XÁC -->
+<div
       id="cho-phenikaa-section"
       class="section"
       style="display: none; background: #fff; min-height: 500px; padding: 20px"
@@ -783,7 +799,112 @@
           "
         ></div>
       </div>
+</div>
+
+
+<div id="onthivstep" class="tab-content" style="display: none;">
+    <div class="vstep-wrapper">
+        
+        <!-- 1. Thanh chọn Kỹ năng lớn -->
+        <div class="vstep-skill-container" style="display: flex; gap: 12px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
+            <button onclick="switchVstepSkill('Listening')" class="vstep-skill-btn active-skill" id="btn-skill-Listening">🎧 Listening</button>
+            <button onclick="switchVstepSkill('Reading')" class="vstep-skill-btn" id="btn-skill-Reading">📖 Reading</button>
+            <button onclick="switchVstepSkill('Writing')" class="vstep-skill-btn" id="btn-skill-Writing">✍️ Writing</button>
+            <button onclick="switchVstepSkill('Speaking')" class="vstep-skill-btn" id="btn-skill-Speaking">🗣️ Speaking</button>
+        </div>
+
+        <!-- 2. Thanh chọn Part nhỏ -->
+        <div id="vstep-part-container" class="vstep-part-container" style="display: flex; gap: 10px; margin-bottom: 20px;"></div>
+        <!-- Chèn vào trong div #onthivstep -->
+<div id="vstep-welcome-banner" class="vstep-banner-container">
+    <img src="photo/vstep1.jpg" class="banner-pc" alt="Banner PC">
+    <img src="photo/vstep2.jpg" class="banner-mobile" alt="Banner Mobile">
+</div>
+        <!-- 3. Nút xem Transcript / Tài liệu (Dùng chung) -->
+        <button class="vstep-drawer-toggle-btn" onclick="toggleWordDrawer()">
+            📂 Xem Transcript / Dịch 
+        </button>
+
+        <!-- ================= THẺ DÀNH RIÊNG CHO LISTENING, WRITING, SPEAKING ================= -->
+        <div id="vstep-normal-layout">
+            <!-- Khung Audio (Chỉ hiện khi cần) -->
+            <div id="vstep-top-media-box" class="vstep-audio-box">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0066ff" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+                <h3 id="media-title">Phần Nghe / Luyện Tập</h3>
+                <p id="media-desc">Bấm nút bên dưới để trình duyệt đọc mẫu phát âm cho câu hỏi hiện tại</p>
+                
+                <button class="vstep-speak-btn" onclick="speakCurrentQuestion()">
+                    🔊 Nghe đọc câu hỏi (Speak / Audio)
+                </button>
+
+                <div id="vstep-audio-element-box" style="margin-top: 15px;">
+                    <audio id="vstep-audio-source" controls style="width: 100%; outline: none; border-radius: 8px;">
+                        Trình duyệt của bạn không hỗ trợ thẻ audio.
+                    </audio>
+                </div>
+            </div>
+
+            <!-- Khung câu hỏi thông thường -->
+            <div id="vstep-question-container" class="vstep-question-card">
+                <!-- Câu hỏi render tự động bằng JS -->
+            </div>
+
+            <!-- Thanh điều hướng và Nộp bài thông thường -->
+            <div class="vstep-nav-bar">
+                <div id="vstep-pagination" class="vstep-pagination-nums"></div>
+                <button class="vstep-submit-btn" onclick="submitVstepQuiz()">
+                    🚀 Nộp bài & Xem kết quả
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= THẺ DÀNH RIÊNG CHO READING (GIAO DIỆN 2 CỘT) ================= -->
+        <div id="reading-layout-container" style="display: none;">
+            <!-- Thanh công cụ nhỏ phía trên (Nút Bài đọc / Dịch) -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px;">
+                <button onclick="switchReadingMode('reading')" id="btn-mode-reading" style="background: #0066ff; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer;">📖 Bài đọc</button>
+                <button onclick="switchReadingMode('translation')" id="btn-mode-translation" style="background: #e9ecef; color: #333; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer;">🇻🇳 Dịch</button>
+            </div>
+
+            <!-- Lưới 2 cột: Trái (Văn bản đọc), Phải (Câu hỏi & Nộp bài) -->
+            <div class="reading-split-grid">
+                <!-- Cột Trái: Bài đọc dài có thanh cuộn riêng -->
+                <div class="reading-text-pane" id="reading-pane-content">
+                    Đang tải bài đọc...
+                </div>
+
+                <!-- Cột Phải: Câu hỏi và nút nộp bài -->
+                <!-- Cột Phải: Câu hỏi và nút nộp bài -->
+<!-- Cột Phải trong phần Reading (index.html) -->
+<div class="reading-question-pane">
+    <!-- Dùng chung ID chuẩn để JS vẽ trực tiếp vào đây -->
+    <div id="reading-question-container" class="vstep-question-card" style="box-shadow: none; border: 1px solid #e1e4e8; margin-bottom: 15px;">
+        <!-- Câu hỏi sẽ hiện ở đây -->
     </div>
+    
+    <div class="vstep-nav-bar" style="box-shadow: none; border: 1px solid #e1e4e8;">
+        <div id="vstep-pagination" class="vstep-pagination-nums"></div>
+        <button class="vstep-submit-btn" onclick="submitVstepQuiz()">🚀 Nộp bài & Xem kết quả</button>
+    </div>
+</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- NGĂN KÉO TRƯỞT XEM TRANSCRIPT / TÀI LIỆU -->
+<div id="vstep-drawer-overlay" class="vstep-drawer-overlay" onclick="toggleWordDrawer()"></div>
+<div id="vstep-word-drawer" class="vstep-word-drawer">
+    <div class="drawer-header">
+        <h3>📄 Transcript & Bản Dịch</h3>
+        <button class="drawer-close-btn" onclick="toggleWordDrawer()">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-content-box">
+        <!-- Nội dung tự động nạp từ vstepDatabase.js -->
+    </div>
+</div>
+
 
     <div id="threads" class="section">
       <div class="nenchonmon" style="max-width: 650px; margin: 20px auto">
@@ -1058,6 +1179,13 @@
     <script src="js/cnkhxh.js"></script>
     <script src="js/triet3tin.js"></script>
     <script src="js/lkdt.js"></script>
+    <script src="js/ktcb.js"></script>
+    <!-- Nạp các file dữ liệu VSTEP độc lập -->
+    <script src="js/vstep_listening.js"></script>
+    <script src="js/vstep_reading.js"></script>
+    <script src="js/vstep_writing.js"></script>
+    <script src="js/vstep_speaking.js"></script>
+    <script src="js/vstepDatabase.js"></script> <!-- File gom chung -->
 
 
     <!-- 2. Tải file tổng hợp kho câu hỏi -->

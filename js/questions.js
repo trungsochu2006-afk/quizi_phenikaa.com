@@ -12,5 +12,6 @@ const quizDatabase = {
   "Chủ Nghĩa Khoa Học Xã Hội": cnkhxh,
   "Triết 3 Tín": triet3tin,
   "Linh Kiện Điện Tử": lkdt,
+  "Kỹ Thuật Cảm Biến": ktcb,
 };
 let originalQuestions = []; // Biến chứa câu hỏi của chương đang làm
