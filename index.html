@@ -6,6 +6,7 @@
     <title>QUIZI PHENIKAA</title>
     <link rel="stylesheet" href="CSS/style.css" />
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
@@ -59,6 +60,7 @@
         <button onclick="showTab('threads')">Thread phenikaa</button>
         <button onclick="showTab('cho-phenikaa-section')">Chợ Phenikaa</button>
         <button onclick="showTab('onthivstep')">VSTEP B1</button>
+        <button onclick="showTab('tieng-anh-dau-vao')" style="background: #132c63; color: white;">Tiếng anh đầu vào</button>
 
         <button
           id="admin-stats-tab-btn"
@@ -439,7 +441,14 @@
             <canvas id="accessLineChart"></canvas>
           </div>
         </div>
-
+            <div style="margin-bottom: 30px;">
+  <h3 style="margin-bottom: 10px; color: #333">
+    🛒 Thống kê lượt xem sản phẩm Chợ Phenikaa
+  </h3>
+  <div id="cho-phenikaa-stats-box" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; max-height: 300px; overflow-y: auto;">
+    <p style="color: #777; text-align: center; margin: 0;">Đang tải dữ liệu...</p>
+  </div>
+</div>
         <div>
           <h3 style="margin-bottom: 10px; color: #333">
             🟢 Học viên đang làm bài trực tuyến
@@ -753,8 +762,7 @@
           <div class="banner-content">
             <h1>🛒 Chợ Sinh Viên Phenikaa</h1>
             <p>
-              Sàn giao dịch đồ cũ , dịch vụ in 3D (400đ/gram) ,thiết kế , hỗ trợ
-              đồ án nội bộ trường!----------------> ZALO 0825256206
+              Sàn giao dịch đồ cũ , dịch vụ in 3D (400đ/gram) 
             </p>
             <button class="banner-btn" onclick="moModalDangSanPham()">
               ➕ Đăng Bán Sản Phẩm
@@ -905,7 +913,95 @@
     </div>
 </div>
 
+<!-- 👉 GIAO DIỆN DANH SÁCH ĐỀ THI TRONG TAB "TIẾNG ANH ĐẦU VÀO" -->
+<div id="tieng-anh-dau-vao" class="section" style="display: none; padding: 20px; background: #f4f6f9; max-width: 1000px; margin: 20px auto; border-radius: 8px;">
+    <div style="font-family: inherit; color: #333;">
+        
+        <!-- Mục Đề thi thử số 01 -->
+        <div style="background: white; border: 1px solid #dcdcdc; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #dcdcdc; font-weight: bold; color: #333; display: flex; align-items: center; gap: 8px;">
+                <span>▼</span> Đề thi thử số 01
+            </div>
+            <div style="padding: 0;">
+                <div onclick="moChiTietDeThi('De01_Nghe')" style="padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 01 - Kỹ năng nghe</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">25 pts</div>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="moChiTietDeDoc('De01_Doc')" style="padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 01 - Kỹ năng đọc</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">30 pts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Mục Đề thi thử số 02 -->
+        <div style="background: white; border: 1px solid #dcdcdc; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #dcdcdc; font-weight: bold; color: #333; display: flex; align-items: center; gap: 8px;">
+                <span>▼</span> Đề thi thử số 02
+            </div>
+            <div style="padding: 0;">
+                <div onclick="moChiTietDeThi('De02_Nghe')" style="padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 02 - Kỹ năng nghe</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">25 pts</div>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="moChiTietDeDoc('De02_Doc')" style="padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 02 - Kỹ năng đọc</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">30 pts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mục Đề thi thử số 03 -->
+        <div style="background: white; border: 1px solid #dcdcdc; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #dcdcdc; font-weight: bold; color: #333; display: flex; align-items: center; gap: 8px;">
+                <span>▼</span> Đề thi thử số 03
+            </div>
+            <div style="padding: 0;">
+                <div onclick="moChiTietDeThi('De03_Nghe')" style="padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 03 - Kỹ năng nghe</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">25 pts</div>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="moChiTietDeDoc('De03_Doc')" style="padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 18px;">🚀</span>
+                        <div>
+                            <div style="font-weight: 600; color: #0066cc;">Đề thi thử số 03 - Kỹ năng đọc</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 2px;">30 pts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+ <!-- thread -->
+  </div>
     <div id="threads" class="section">
       <div class="nenchonmon" style="max-width: 650px; margin: 20px auto">
         <div class="mauchuquizi" style="margin-bottom: 15px">
@@ -1163,6 +1259,18 @@
         <img src="photo/shopeeicon.png" class="shopeeicon" />
         <button class="tick-btn" onclick="goShopee()">X</button>
       </div>
+      <!-- Khung đăng nhập Admin (ẩn, chỉ hiện khi bấm Ctrl+Alt+A) -->
+<div id="admin-login-box" style="display:none; position:fixed; bottom:20px; right:20px; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:999999; width:260px;">
+  <h4 style="margin:0 0 12px 0; color:#132c63;">🔐 Đăng nhập Admin</h4>
+  <input type="email" id="admin-email" placeholder="Email admin" autocomplete="off"
+    style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+  <input type="password" id="admin-password" placeholder="Mật khẩu" autocomplete="off"
+    style="width:100%; padding:8px; margin-bottom:12px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+  <div style="display:flex; gap:8px;">
+    <button onclick="dangNhapAdmin()" style="flex:1; background:#28a745; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold;">Đăng nhập</button>
+    <button onclick="dongAdminLoginBox()" style="flex:1; background:#ccc; border:none; padding:8px; border-radius:5px; cursor:pointer;">Đóng</button>
+  </div>
+</div>
     </div>
 
     <!-- 1. Tải các file dữ liệu môn học trước -->
@@ -1186,7 +1294,9 @@
     <script src="js/vstep_writing.js"></script>
     <script src="js/vstep_speaking.js"></script>
     <script src="js/vstepDatabase.js"></script> <!-- File gom chung -->
-
+    <script src="js/nghe_tadv.js"></script>
+    <script src="js/doc_tadv.js"></script>
+    <script src="js/doc_logic.js"></script>
 
     <!-- 2. Tải file tổng hợp kho câu hỏi -->
     <script src="js/questions.js"></script>

@@ -120,11 +120,8 @@ function showTab(tabId) {
 
   // 5. Kiểm tra quyền khi bấm vào tab thống kê Admin
   if (tabId === "admin-stats") {
-    if (
-      !currentStudent ||
-      (currentStudent.id !== "7277979906" &&
-        currentStudent.name !== "trung_admin")
-    ) {
+    let user = firebase.auth().currentUser;
+    if (!user || user.isAnonymous) {
       alert("Bạn không có quyền truy cập khu vực này!");
       showTab("home");
       return;
@@ -331,12 +328,14 @@ function initQuizGame() {
   updateLiveScoreBar();
   renderQuestion();
 
+  let quizUser = firebase.auth().currentUser;
   if (
+    quizUser &&
     typeof currentStudent !== "undefined" &&
     currentStudent &&
     currentStudent.id
   ) {
-    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).set({
+    database.ref("active_quiz_sessions/" + quizUser.uid).set({
       name: currentStudent.name,
       id: currentStudent.id,
       subject:
@@ -389,7 +388,9 @@ function renderQuestion() {
   }
   document.getElementById("prev-btn").disabled = currentQuestionIdx === 0;
 
+  let renderUser = firebase.auth().currentUser;
   if (
+    renderUser &&
     typeof currentStudent !== "undefined" &&
     currentStudent &&
     currentStudent.id
@@ -397,7 +398,7 @@ function renderQuestion() {
     let liveScoreVal = document.getElementById("live-score-val")
       ? document.getElementById("live-score-val").innerText
       : "0.00";
-    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).update({
+    database.ref("active_quiz_sessions/" + renderUser.uid).update({
       currentQuestion: currentQuestionIdx + 1,
       currentScore: liveScoreVal,
     });
@@ -489,12 +490,9 @@ function ketthucbaithi() {
 
   let exitBox = document.getElementById("emergency-exit-box");
   if (exitBox) exitBox.style.display = "none";
-  if (
-    typeof currentStudent !== "undefined" &&
-    currentStudent &&
-    currentStudent.id
-  ) {
-    database.ref("active_quiz_sessions/" + currentStudent.id.trim()).remove();
+  let endUser = firebase.auth().currentUser;
+  if (endUser) {
+    database.ref("active_quiz_sessions/" + endUser.uid).remove();
   }
 
   showQuizSubTab("quiz-result");
@@ -959,8 +957,18 @@ function capNhatAnhTatCaBaiDangCu(mssv, newAvatar) {
 
 function dangXuatTaiKhoan() {
   if (confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-    localStorage.removeItem("current_logged_student");
-    location.reload();
+    firebase
+      .auth()
+      .signOut()
+      .then(() => {
+        localStorage.removeItem("current_logged_student");
+        location.reload();
+      })
+      .catch((error) => {
+        console.error("Lỗi đăng xuất:", error.message);
+        localStorage.removeItem("current_logged_student");
+        location.reload();
+      });
   }
 }
 
@@ -1012,27 +1020,44 @@ function dangXuatTaiKhoan() {
 // 🌐 6. HỆ THỐNG ĐẾM & ĐỒNG BỘ SỐ NGƯỜI ONLINE (FIREBASE)
 // ==========================================
 function updateOnlineStatus() {
-  let student = JSON.parse(localStorage.getItem("current_logged_student"));
-  let userId =
-    student && student.id
-      ? student.id.trim()
-      : "guest_" + Math.random().toString(36).substring(2, 9);
-  let userName = student && student.name ? student.name : "Khách tham quan";
+  firebase.auth().onAuthStateChanged((user) => {
+    if (!user) return; // chưa có UID Auth thì chưa ghi được
 
-  let userRef = database.ref("online_users/" + userId);
-  userRef.onDisconnect().remove();
-  userRef.set({
-    name: userName,
-    lastSeen: firebase.database.ServerValue.TIMESTAMP,
+    let student = JSON.parse(localStorage.getItem("current_logged_student"));
+    let userName = student && student.name ? student.name : "Khách tham quan";
+
+    let userRef = database.ref("online_users/" + user.uid); // dùng UID Auth thật
+    userRef.onDisconnect().remove();
+    userRef.set({
+      name: userName,
+      lastSeen: firebase.database.ServerValue.TIMESTAMP,
+    });
   });
 }
-
+// 🔄 Tự động cập nhật lastSeen mỗi 60 giây để biết chính xác ai đang thực sự mở web
+setInterval(() => {
+  let user = firebase.auth().currentUser;
+  if (user) {
+    database
+      .ref("online_users/" + user.uid + "/lastSeen")
+      .set(firebase.database.ServerValue.TIMESTAMP);
+  }
+}, 60000);
 document.addEventListener("DOMContentLoaded", function () {
   updateOnlineStatus();
 });
 
 database.ref("online_users").on("value", (snapshot) => {
-  let count = snapshot.numChildren();
+  let data = snapshot.val() || {};
+  let now = Date.now();
+  let count = 0;
+
+  Object.values(data).forEach((item) => {
+    if (item.lastSeen && now - item.lastSeen < 2 * 60 * 1000) {
+      count++;
+    }
+  });
+
   let displayEl = document.getElementById("wau_count");
   if (displayEl) {
     displayEl.innerText = count;
@@ -1045,21 +1070,36 @@ database.ref("online_users").on("value", (snapshot) => {
 let myAccessChart = null;
 let globalAccessLogs = {};
 
+function capNhatGiaoDienAdmin(user) {
+  let adminBtn = document.getElementById("admin-stats-tab-btn");
+  if (!adminBtn) return;
+
+  if (user && !user.isAnonymous) {
+    adminBtn.style.display = "inline-block";
+    localStorage.setItem("admin_verified_uid", user.uid);
+  } else if (user && user.isAnonymous) {
+    adminBtn.style.display = "none";
+    localStorage.removeItem("admin_verified_uid");
+  }
+}
+
+let daDangKyAuthListener = false;
 function checkAdminPermission() {
   let adminBtn = document.getElementById("admin-stats-tab-btn");
   if (!adminBtn) return;
 
-  if (
-    currentStudent &&
-    (currentStudent.id === "7277979906" ||
-      currentStudent.name === "trung_admin")
-  ) {
+  let savedAdminUid = localStorage.getItem("admin_verified_uid");
+  if (savedAdminUid) {
     adminBtn.style.display = "inline-block";
-  } else {
-    adminBtn.style.display = "none";
+  }
+
+  if (!daDangKyAuthListener) {
+    daDangKyAuthListener = true;
+    firebase.auth().onAuthStateChanged((user) => {
+      capNhatGiaoDienAdmin(user);
+    });
   }
 }
-
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(checkAdminPermission, 500);
 });
@@ -1105,9 +1145,19 @@ function loadAdminStatisticsData() {
   });
 
   database.ref("online_users").on("value", (snapshot) => {
+    let data = snapshot.val() || {};
+    let now = Date.now();
+    let count = 0;
+
+    Object.values(data).forEach((item) => {
+      if (item.lastSeen && now - item.lastSeen < 2 * 60 * 1000) {
+        count++;
+      }
+    });
+
     let onlineNowEl = document.getElementById("stat-online-now");
     if (onlineNowEl) {
-      onlineNowEl.innerText = snapshot.numChildren();
+      onlineNowEl.innerText = count;
     }
   });
 
@@ -1126,6 +1176,9 @@ function loadAdminStatisticsData() {
       vstepCompletedEl.innerText = snapshot.numChildren();
     }
   });
+
+  // 🔥 Thêm dòng này vào cuối hàm
+  loadChoPhenikaaStats();
 }
 
 function logUserAccessActivity() {
@@ -1381,14 +1434,17 @@ function taiDanhSachSanPham() {
         const card = document.createElement("div");
         card.className = "san-pham-card";
         card.innerHTML = `
-                <img src="${sp.anh}" class="san-pham-img" alt="Ảnh sản phẩm">
-                <div class="san-pham-body">
-                    <h3 class="san-pham-title">${sp.ten}</h3>
-                    <div class="san-pham-price">${sp.gia}</div>
-                    <p class="san-pham-desc">${sp.mota}</p>
-                    <button style="width: 100%; background: #007bff; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;" onclick="alert('Liên hệ người bán qua sđt/fb nội bộ trường nhé!')">Xem Chi Tiết</button>
-                </div>
-            `;
+        ${nutXoaHtml}
+        <img src="${escapeHtml(sp.anh)}" class="san-pham-img" alt="Ảnh sản phẩm">
+        <div class="san-pham-body">
+            <h3 class="san-pham-title">${escapeHtml(sp.ten)}</h3>
+            <div class="san-pham-price">${escapeHtml(giaHienThi)}</div>
+            <p class="san-pham-desc">${escapeHtml(sp.mota)}</p>
+            <p style="font-size: 11px; color: #888; margin-bottom: 8px;">Đăng bởi: ${escapeHtml(sp.nguoiDang)}</p>
+            <p style="font-size: 12px; color: #007bff; margin-bottom: 8px;">👁️ ${sp.luotXem || 0} lượt xem chi tiết</p>
+            <button style="width: 100%; background: #007bff; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;" onclick="${actionClick}">Xem Chi Tiết / Liên Hệ</button>
+        </div>
+      `;
         luoiSanPham.appendChild(card);
       });
     });
@@ -1505,8 +1561,8 @@ function taiDanhSachSanPham() {
 
         const actionClick =
           sp.link && sp.link !== "#"
-            ? `window.open('${sp.link}', '_blank')`
-            : `alert('Người bán chưa đính kèm link chi tiết, hãy liên hệ trực tiếp nội bộ trường nhé!')`;
+            ? `tangLuotXemSanPham('${key}'); window.open('${sp.link}', '_blank')`
+            : `tangLuotXemSanPham('${key}'); alert('Người bán chưa đính kèm link chi tiết, hãy liên hệ trực tiếp nội bộ trường nhé!')`;
 
         let giaHienThi = formatTienTe(sp.gia);
 
@@ -1672,23 +1728,15 @@ function getActiveQuestions() {
   }
 }
 
+// =========================================
+// 🔥 HÀM RENDER ĐÃ ĐƯỢC NÂNG CẤP: READING HIỆN TẤT CẢ, CÁC MỤC KHÁC GIỮ NGUYÊN
+// =========================================
 function renderVstepQuestion(index) {
   currentVstepIndex = index;
   const questions = getActiveQuestions();
   if (questions.length === 0) return;
 
-  const qData = questions[index];
-
-  // 🔥 Lựa chọn chính xác container dựa vào kỹ năng hiện tại
-  let containerId =
-    currentSkill === "Reading"
-      ? "reading-question-container"
-      : "vstep-question-container";
-  const container = document.getElementById(containerId);
-
-  if (!container) return;
-
-  // 🔥 Kiểm tra quyền Admin cho Writing và Speaking
+  // 1. Kiểm tra quyền Admin cho Writing và Speaking
   let isAdmin = false;
   if (typeof currentStudent !== "undefined" && currentStudent) {
     if (
@@ -1700,71 +1748,160 @@ function renderVstepQuestion(index) {
   }
 
   if (currentSkill === "Writing" || currentSkill === "Speaking") {
+    let container = document.getElementById("vstep-question-container");
+    if (!container) return;
+    const qData = questions[index];
+
     if (isAdmin) {
       container.innerHTML = `
-                <div style="margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #0066ff;">🛠️ [GIAO DIỆN ADMIN] - Nhập/Cập nhật Template:</div>
-                <div style="margin-bottom: 10px; font-weight: 600;">${qData.q}</div>
-                <textarea id="vstep-writing-area" 
-                    style="width: 100%; height: 300px; padding: 15px; border: 2px solid #0066ff; border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box;"
-                    placeholder="Nhập phần văn bản / template cho học viên..."></textarea>
-                <div style="margin-top: 8px; color: #28a745; font-size: 13px; font-weight: bold;">✔ Quyền Admin: Có quyền chỉnh sửa.</div>
-            `;
+        <div style="margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #0066ff;">🛠️ [GIAO DIỆN ADMIN] - Soạn Template / Đề bài:</div>
+        <div style="margin-bottom: 10px; font-weight: 600;">${qData.q}</div>
+        <textarea id="vstep-admin-template-area" style="width: 100%; height: 250px; padding: 15px; border: 2px solid #0066ff; border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box;" placeholder="Nhập nội dung template...">${qData.templateContent || ""}</textarea>
+        
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #28a745; font-size: 13px; font-weight: bold;">✔ Quyền Admin: Gõ xong bấm nút bên cạnh để lấy code.</span>
+            <button onclick="exportCodeForFile(${index})" style="background: #ffc107; color: #000; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">📥 Lấy đoạn code để dán vào file</button>
+        </div>
+
+        <!-- Khung hiển thị code xuất ra để copy -->
+        <div id="export-code-box" style="margin-top: 15px; display: none;">
+            <label style="font-weight: bold; font-size: 13px; color: #333;">👉 Copy đoạn code này dán đè vào file dữ liệu của ông:</label>
+            <textarea id="exported-code-result" readonly style="width: 100%; height: 100px; margin-top: 5px; padding: 10px; background: #272822; color: #f8f8f2; border-radius: 6px; font-family: monospace; font-size: 13px;"></textarea>
+        </div>
+      `;
     } else {
       container.innerHTML = `
-                <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px;">${qData.q}</div>
-                <div style="width: 100%; min-height: 220px; max-height: 350px; overflow-y: auto; padding: 15px; border: 2px solid #ced4da; border-radius: 10px; background: #f8f9fa; font-size: 15px; box-sizing: border-box; white-space: pre-wrap; color: #333;"
-                >${qData.templateContent || "Phần template này hiện chưa có nội dung hoặc đang được cập nhật bởi Admin."}</div>
-                <div style="margin-top: 8px; color: #dc3545; font-size: 13px;">🔒 Tài khoản học viên: Chỉ có quyền xem tài liệu/template.</div>
-            `;
+        <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px;">${qData.q}</div>
+        <div style="width: 100%; min-height: 220px; max-height: 350px; overflow-y: auto; padding: 15px; border: 2px solid #ced4da; border-radius: 10px; background: #f8f9fa; font-size: 15px; box-sizing: border-box; white-space: pre-wrap; color: #333;"
+        >${qData.templateContent || "Phần template này hiện chưa có nội dung."}</div>
+        <div style="margin-top: 8px; color: #dc3545; font-size: 13px;">🔒 Tài khoản học viên: Chỉ có quyền xem tài liệu/template.</div>
+      `;
     }
-  } else {
-    // Trắc nghiệm cho Listening và Reading
-    let optionsHtml = "";
-    for (let key in qData.options) {
-      let optionStyle = "border: 2px solid #e1e4e8; background: #fff;";
-      let letterBg = "background: #f0f2f5; color: #444;";
+    updateVstepPagination();
+    updatePartTranscript();
+    return;
+  }
+  // 3. XỬ LÝ RIÊNG CHO READING: HIỆN TOÀN BỘ TẤT CẢ CÁC CÂU HỎI MỘT LƯỢT ĐỂ KÉO MÀN HÌNH
+  if (currentSkill === "Reading") {
+    let container = document.getElementById("reading-question-container");
+    if (!container) return;
 
-      if (isSubmitted) {
-        if (key === qData.answer) {
-          optionStyle = "border: 2px solid #28a745; background: #d4edda;";
-          letterBg = "background: #28a745; color: white;";
-        } else if (vstepUserAnswers[index] === key && key !== qData.answer) {
-          optionStyle = "border: 2px solid #dc3545; background: #f8d7da;";
-          letterBg = "background: #dc3545; color: white;";
+    container.innerHTML = ""; // Xóa sạch để vẽ lại toàn bộ dải câu hỏi
+
+    questions.forEach((qData, qIdx) => {
+      let optionsHtml = "";
+      for (let key in qData.options) {
+        let optionStyle = "border: 2px solid #e1e4e8; background: #fff;";
+        let letterBg = "background: #f0f2f5; color: #444;";
+
+        if (isSubmitted) {
+          if (key === qData.answer) {
+            optionStyle = "border: 2px solid #28a745; background: #d4edda;";
+            letterBg = "background: #28a745; color: white;";
+          } else if (vstepUserAnswers[qIdx] === key && key !== qData.answer) {
+            optionStyle = "border: 2px solid #dc3545; background: #f8d7da;";
+            letterBg = "background: #dc3545; color: white;";
+          }
+        } else if (vstepUserAnswers[qIdx] === key) {
+          optionStyle = "border: 2px solid #0066ff; background: #f0f6ff;";
+          letterBg = "background: #0066ff; color: white;";
         }
-      } else if (vstepUserAnswers[index] === key) {
-        optionStyle = "border: 2px solid #0066ff; background: #f0f6ff;";
-        letterBg = "background: #0066ff; color: white;";
+
+        optionsHtml += `
+          <div onclick="${isSubmitted ? "" : "selectReadingAllOption(" + qIdx + ",'" + key + "') "}" style="${optionStyle} border-radius: 10px; padding: 12px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; ${letterBg} display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; flex-shrink: 0; font-size: 14px;">${key}</div>
+              <div style="font-size: 14px; color: #333;">${qData.options[key]}</div>
+          </div>
+        `;
       }
 
-      optionsHtml += `
-                <div onclick="${isSubmitted ? "" : "selectVstepOption(" + index + ",'" + key + "')"}" 
-                     style="${optionStyle} border-radius: 10px; padding: 12px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s;">
-                    <div style="width: 28px; height: 28px; border-radius: 50%; ${letterBg} display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; flex-shrink: 0; font-size: 14px;">${key}</div>
-                    <div style="font-size: 14px; color: #333;">${qData.options[key]}</div>
-                </div>
-            `;
-    }
-
-    let explanationHtml =
-      isSubmitted && qData.explanation
-        ? `
-            <button class="vstep-explain-btn" onclick="toggleVstepExplanation(${index})">💡 Xem giải thích chi tiết</button>
-            <div id="vstep-explain-${index}" class="vstep-explanation-box" style="display:none; margin-top:10px; padding:12px; background:#e7f5ff; border-left:4px solid #1c7ed6; border-radius:6px; font-size:14px;">
+      let explanationHtml =
+        isSubmitted && qData.explanation
+          ? `
+            <button class="vstep-explain-btn" onclick="toggleVstepExplanation(${qIdx})" style="margin-top: 10px;">💡 Xem giải thích chi tiết</button>
+            <div id="vstep-explain-${qIdx}" class="vstep-explanation-box" style="display:none; margin-top:10px; padding:12px; background:#e7f5ff; border-left:4px solid #1c7ed6; border-radius:6px; font-size:14px;">
                 <b>Lời giải:</b> ${qData.explanation}
             </div>
-        `
-        : "";
+          `
+          : "";
 
-    container.innerHTML = `
-            <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">${qData.q}</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">${optionsHtml}</div>
-            ${explanationHtml}
-        `;
+      let questionCard = document.createElement("div");
+      // 🔥 Tăng khoảng cách, padding và làm rộng khung câu hỏi ra
+      questionCard.style.cssText =
+        "margin-bottom: 30px; padding: 25px; background: #fff; border: 1px solid #dcdcdc; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04);";
+
+      questionCard.innerHTML = `
+        <div style="font-size: 17px; font-weight: bold; margin-bottom: 18px; color: #132c63; line-height: 1.5;">Câu ${qIdx + 1}: ${qData.q}</div>
+        
+        <!-- 🔥 Chuyển từ 2 cột thành 1 cột (1fr) để các lựa chọn to rõ, rộng rãi hết cỡ -->
+        <div style="display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 15px;">${optionsHtml}</div>
+        
+        ${explanationHtml}
+      `;
+
+      container.appendChild(questionCard);
+    });
+
+    updatePartTranscript();
+    return;
   }
+
+  // 4. Các kỹ năng khác (Listening) giữ nguyên dạng phân trang từng câu
+  const qData = questions[index];
+  let container = document.getElementById("vstep-question-container");
+  if (!container) return;
+
+  let optionsHtml = "";
+  for (let key in qData.options) {
+    let optionStyle = "border: 2px solid #e1e4e8; background: #fff;";
+    let letterBg = "background: #f0f2f5; color: #444;";
+
+    if (isSubmitted) {
+      if (key === qData.answer) {
+        optionStyle = "border: 2px solid #28a745; background: #d4edda;";
+        letterBg = "background: #28a745; color: white;";
+      } else if (vstepUserAnswers[index] === key && key !== qData.answer) {
+        optionStyle = "border: 2px solid #dc3545; background: #f8d7da;";
+        letterBg = "background: #dc3545; color: white;";
+      }
+    } else if (vstepUserAnswers[index] === key) {
+      optionStyle = "border: 2px solid #0066ff; background: #f0f6ff;";
+      letterBg = "background: #0066ff; color: white;";
+    }
+
+    optionsHtml += `
+      <div onclick="${isSubmitted ? "" : "selectVstepOption(" + index + ",'" + key + "')"}" style="${optionStyle} border-radius: 10px; padding: 12px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; ${letterBg} display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; flex-shrink: 0; font-size: 14px;">${key}</div>
+          <div style="font-size: 14px; color: #333;">${qData.options[key]}</div>
+      </div>
+    `;
+  }
+
+  let explanationHtml =
+    isSubmitted && qData.explanation
+      ? `
+        <button class="vstep-explain-btn" onclick="toggleVstepExplanation(${index})">💡 Xem giải thích chi tiết</button>
+        <div id="vstep-explain-${index}" class="vstep-explanation-box" style="display:none; margin-top:10px; padding:12px; background:#e7f5ff; border-left:4px solid #1c7ed6; border-radius:6px; font-size:14px;">
+            <b>Lời giải:</b> ${qData.explanation}
+        </div>
+      `
+      : "";
+
+  container.innerHTML = `
+    <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">${qData.q}</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">${optionsHtml}</div>
+    ${explanationHtml}
+  `;
 
   updateVstepPagination();
   updatePartTranscript();
+}
+
+// Hàm chọn đáp án riêng cho chế độ Reading kéo dài
+function selectReadingAllOption(qIndex, optionKey) {
+  if (isSubmitted) return;
+  vstepUserAnswers[qIndex] = optionKey;
+  renderVstepQuestion(0); // Vẽ lại toàn bộ danh sách Reading để cập nhật màu đã chọn
 }
 function selectVstepOption(qIndex, optionKey) {
   if (isSubmitted) return;
@@ -2113,5 +2250,640 @@ function showPart(partId) {
 window.addEventListener("DOMContentLoaded", function () {
   showTab("home");
 });
+// ================= HÀM XỬ LÝ GIAO DIỆN HIỂN THỊ ĐỀ THI =================
+// ================= HÀM XỬ LÝ CLICK MỞ ĐỀ THI =================
+function moChiTietDeThi(examId) {
+  const exam = vstepListeningExams[examId];
+  if (!exam) {
+    alert("Không tìm thấy dữ liệu đề thi này!");
+    return;
+  }
+
+  const danhSachDe = document.getElementById("tieng-anh-dau-vao");
+  if (danhSachDe) danhSachDe.style.display = "none";
+
+  let playContainer = document.getElementById("vstep-exam-play-screen");
+  if (!playContainer) {
+    playContainer = document.createElement("div");
+    playContainer.id = "vstep-exam-play-screen";
+    playContainer.className = "section";
+    document.body.appendChild(playContainer);
+  }
+  playContainer.style.display = "block";
+  playContainer.style.padding = "20px";
+  playContainer.style.background = "#fff";
+  playContainer.style.maxWidth = "900px";
+  playContainer.style.margin = "20px auto";
+  playContainer.style.borderRadius = "8px";
+
+  let htmlParts = "";
+
+  // Duyệt qua từng Part để tạo khung riêng biệt (Audio riêng + Câu hỏi riêng + Nút Transcript)
+  exam.parts.forEach((part) => {
+    let htmlQuestions = "";
+    part.questions.forEach((q) => {
+      htmlQuestions += `
+                <div style="background: #fff; border: 1px solid #dcdcdc; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #333;">Question ${q.id} <span style="float: right; color: #666; font-size: 13px;">0 / 1 pts</span></div>
+                    <div style="margin-bottom: 12px;">${q.questionText}</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="cursor: pointer;"><input type="radio" name="q_${examId}_${q.id}" value="A"> A. ${q.options.A}</label>
+                        <label style="cursor: pointer;"><input type="radio" name="q_${examId}_${q.id}" value="B"> B. ${q.options.B}</label>
+                        <label style="cursor: pointer;"><input type="radio" name="q_${examId}_${q.id}" value="C"> C. ${q.options.C}</label>
+                    </div>
+                </div>
+            `;
+    });
+
+    htmlParts += `
+            <div style="background: #f8f9fa; border: 1px solid #dcdcdc; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                <h3 style="color: #132c63; margin-top: 0;">Part ${part.partNumber}</h3>
+                <p style="line-height: 1.6;"><strong>Directions:</strong> ${part.directions}</p>
+                
+                <!-- 📄 Nút xem Transcript giống VSTEP -->
+                <button onclick="toggleTranscript('trans_${examId}_${part.partNumber}')" style="background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; margin-bottom: 10px;">
+                    📄 Xem Transcript Part ${part.partNumber}
+                </button>
+                <div id="trans_${examId}_${part.partNumber}" style="display: none; background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; color: #856404; line-height: 1.5;">
+                    <strong>Transcript:</strong><br>${part.transcript || "Đang cập nhật transcript..."}
+                </div>
+
+                <!-- Thanh Audio riêng cho từng Part -->
+                <div style="background: #fff; border: 1px solid #dee2e6; padding: 15px; width: 280px; text-align: center; border-radius: 6px; margin: 15px 0;">
+                    <div style="font-size: 30px; margin-bottom: 5px;">🎵</div>
+                    <audio controls style="width: 100%;">
+                        <source src="${part.audioSrc}" type="audio/mpeg">
+                        Trình duyệt của bạn không hỗ trợ thẻ audio.
+                    </audio>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    ${htmlQuestions}
+                </div>
+            </div>
+        `;
+  });
+
+  playContainer.innerHTML = `
+        <button onclick="quayLaiDanhSachDe()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">← Quay lại danh sách đề</button>
+        
+        <div style="background: #ffffff; border: 1px solid #dcdcdc; border-radius: 6px; padding: 20px; margin-bottom: 25px;">
+            <h2 style="margin-top: 0; color: #132c63; text-align: center;">${exam.title}</h2>
+            <p style="text-align: center; color: #555; font-size: 14px;">Số lần làm bài: Không giới hạn - Ghi nhận điểm cao nhất.</p>
+            <div style="display: flex; justify-content: space-around; background: #fdfdfd; padding: 10px; border: 1px solid #eee; border-radius: 4px; margin: 15px 0; font-size: 14px;">
+                <span><strong>Points:</strong> ${exam.points}</span>
+                <span><strong>Time Limit:</strong> ${exam.timeMinutes} Minutes</span>
+            </div>
+        </div>
+
+        <div>${htmlParts}</div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="nopBaiVaXemKetQua('${examId}')" style="background: #28a745; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                🚀 Nộp Bài & Xem Kết Quả
+            </button>
+        </div>
+    `;
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function quayLaiDanhSachDe() {
+  const playContainer = document.getElementById("vstep-exam-play-screen");
+  if (playContainer) playContainer.style.display = "none";
+
+  const danhSachDe = document.getElementById("tieng-anh-dau-vao");
+  if (danhSachDe) danhSachDe.style.display = "block";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// 📄 Hàm ẩn/hiện Transcript
+function toggleTranscript(id) {
+  const box = document.getElementById(id);
+  if (box) {
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+}
+
+function nopBaiVaXemKetQua(examId) {
+  const exam = vstepListeningExams[examId];
+  if (!exam) return;
+
+  let totalQuestions = 0;
+  let correctCount = 0;
+  let resultsHtml = "";
+
+  // Duyệt qua từng part và từng câu hỏi để chấm điểm kèm lời giải chi tiết
+  exam.parts.forEach((part) => {
+    part.questions.forEach((q) => {
+      totalQuestions++;
+      const selectedInput = document.querySelector(
+        `input[name="q_${examId}_${q.id}"]:checked`,
+      );
+      const userAnswer = selectedInput ? selectedInput.value : null;
+      const isCorrect = userAnswer === q.correct;
+
+      if (isCorrect) {
+        correctCount++;
+      }
+
+      let optionsDisplay = "";
+      for (let key in q.options) {
+        let color = "#333";
+        let fontWeight = "normal";
+        let bgStyle = "transparent";
+
+        if (key === q.correct) {
+          color = "#28a745"; // Đáp án đúng màu xanh
+          fontWeight = "bold";
+          bgStyle = "#e8f5e9";
+        } else if (key === userAnswer && !isCorrect) {
+          color = "#dc3545"; // Người dùng chọn sai màu đỏ
+          fontWeight = "bold";
+          bgStyle = "#ffebee";
+        }
+
+        optionsDisplay += `<div style="padding: 4px 8px; background: ${bgStyle}; color: ${color}; font-weight: ${fontWeight}; border-radius: 4px;">${key}. ${q.options[key]} ${key === q.correct ? " (Đáp án đúng)" : ""} ${key === userAnswer && !isCorrect ? " (Bạn chọn sai)" : ""}</div>`;
+      }
+
+      resultsHtml += `
+                <div style="background: #fff; border: 1px solid ${isCorrect ? "#28a745" : "#dc3545"}; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: ${isCorrect ? "#28a745" : "#dc3545"};">
+                        Question ${q.id} - ${isCorrect ? "✅ Đúng (+1 điểm)" : "❌ Sai"}
+                    </div>
+                    <div style="margin-bottom: 10px; font-weight: 500;">${q.questionText}</div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;">
+                        ${optionsDisplay}
+                    </div>
+                    <!-- 💡 BỔ SUNG LỜI GIẢI CHI TIẾT -->
+                    <div style="background: #f1f3f5; border-left: 4px solid #17a2b8; padding: 10px; font-size: 14px; color: #333; border-radius: 0 4px 4px 0; line-height: 1.5;">
+                        <strong>💡 Lời giải chi tiết:</strong><br>${q.explanation || "Đang cập nhật lời giải..."}
+                    </div>
+                </div>
+            `;
+    });
+  });
+
+  const finalScore = ((correctCount / totalQuestions) * exam.points).toFixed(2);
+
+  let playContainer = document.getElementById("vstep-exam-play-screen");
+  playContainer.innerHTML = `
+        <button onclick="quayLaiDanhSachDe()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">← Quay lại danh sách đề</button>
+        
+        <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 25px;">
+            <h2 style="margin-top: 0; color: #0d47a1;">📊 KẾT QUẢ BÀI LÀM: ${exam.title}</h2>
+            <div style="font-size: 28px; font-weight: bold; color: #1565c0; margin: 15px 0;">
+                ${finalScore} / ${exam.points} Điểm
+            </div>
+            <p style="font-size: 16px; color: #333; margin: 0;">
+                Số câu đúng: <strong>${correctCount} / ${totalQuestions}</strong> câu.
+            </p>
+        </div>
+
+        <h3 style="color: #132c63; margin-bottom: 15px;">🔍 Chi tiết đáp án và Lời giải:</h3>
+        <div>${resultsHtml}</div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="moChiTietDeThi('${examId}')" style="background: #007bff; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                🔄 Làm Lại Đề Này
+            </button>
+        </div>
+    `;
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function moChiTietDeDoc(examId) {
+  const exam = vstepReadingExams[examId];
+  if (!exam) {
+    alert("Không tìm thấy dữ liệu đề đọc này!");
+    return;
+  }
+
+  const danhSachDe = document.getElementById("tieng-anh-dau-vao");
+  if (danhSachDe) danhSachDe.style.display = "none";
+
+  let playContainer = document.getElementById("vstep-reading-play-screen");
+  if (!playContainer) {
+    playContainer = document.createElement("div");
+    playContainer.id = "vstep-reading-play-screen";
+    playContainer.className = "section";
+    document.body.appendChild(playContainer);
+  }
+  playContainer.style.display = "block";
+  playContainer.style.padding = "20px";
+  playContainer.style.background = "#fff";
+  playContainer.style.maxWidth = "900px";
+  playContainer.style.margin = "20px auto";
+  playContainer.style.borderRadius = "8px";
+
+  let htmlParts = "";
+
+  // Duyệt qua từng Part, mỗi Part gồm: Hướng dẫn -> Ảnh đề -> Câu hỏi riêng của Part đó
+  exam.parts.forEach((part) => {
+    let htmlQuestions = "";
+    part.questions.forEach((q) => {
+      htmlQuestions += `
+                <div style="background: #fff; border: 1px solid #dcdcdc; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #333;">Question ${q.id} <span style="float: right; color: #666; font-size: 13px;">1 pt</span></div>
+                    <div style="margin-bottom: 12px; font-weight: 500;">${q.questionText}</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="cursor: pointer;"><input type="radio" name="doc_${examId}_${q.id}" value="A"> A. ${q.options.A}</label>
+                        <label style="cursor: pointer;"><input type="radio" name="doc_${examId}_${q.id}" value="B"> B. ${q.options.B}</label>
+                        <label style="cursor: pointer;"><input type="radio" name="doc_${examId}_${q.id}" value="C"> C. ${q.options.C}</label>
+                    </div>
+                </div>
+            `;
+    });
+
+    let imageDisplay = "";
+    if (part.noticesData) {
+      imageDisplay = renderNoticesLayout(part.noticesData);
+    } else if (part.adEmailData) {
+      imageDisplay = renderAdEmailLayout(part.adEmailData);
+    } else if (part.twoEmailsData) {
+      imageDisplay = renderTwoEmailsLayout(part.twoEmailsData);
+    } else if (part.passageText) {
+      let safeText = escapeHtml(part.passageText).replace(
+        /&lt;br&gt;/g,
+        "<br>",
+      );
+      imageDisplay = `
+<div style="background: #fff; padding: 25px; border-radius: 8px; font-size: 16px; line-height: 1.8; color: #222; text-align: left;">
+    ${safeText}
+</div>
+`;
+    } else if (part.imageSrc) {
+      imageDisplay = `<div style="text-align: center; margin-bottom: 15px;"><img src="${part.imageSrc}" alt="Đề đọc Part ${part.partNumber}" style="max-width: 100%; height: auto;"...`;
+    }
+    htmlParts += `
+            <div style="background: #f8f9fa; border: 1px solid #dcdcdc; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <h3 style="color: #132c63; margin-top: 0;">Part ${part.partNumber}</h3>
+                <div style="line-height: 1.6; margin-bottom: 15px; font-size: 15px; font-weight: bold;">${part.directions}</div>
+                
+                <!-- Ảnh đề đọc của Part này -->
+                <div style="background: #ffffff; border: 1px solid #ced4da; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    ${imageDisplay}
+                </div>
+
+                <!-- Danh sách câu hỏi riêng của Part này nằm ngay bên dưới -->
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #333; margin-bottom: 15px;">📝 Câu hỏi Part ${part.partNumber}:</h4>
+                    ${htmlQuestions}
+                </div>
+            </div>
+        `;
+  });
+
+  playContainer.innerHTML = `
+        <button onclick="quayLaiDanhSachDeDoc()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">← Quay lại danh sách đề</button>
+        
+        <div style="background: #ffffff; border: 1px solid #dcdcdc; border-radius: 6px; padding: 20px; margin-bottom: 25px;">
+            <h2 style="margin-top: 0; color: #132c63; text-align: center;">${exam.title}</h2>
+            <p style="text-align: center; color: #555; font-size: 14px;">Số lần làm bài: Không giới hạn - Ghi nhận điểm cao nhất.</p>
+            <div style="display: flex; justify-content: space-around; background: #fdfdfd; padding: 10px; border: 1px solid #eee; border-radius: 4px; margin: 15px 0; font-size: 14px;">
+                <span><strong>Points:</strong> ${exam.points}</span>
+                <span><strong>Time Limit:</strong> ${exam.timeMinutes} Minutes</span>
+            </div>
+        </div>
+
+        <div>${htmlParts}</div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="nopBaiDocVaXemKetQua('${examId}')" style="background: #28a745; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                🚀 Nộp Bài Đọc & Xem Kết Quả
+            </button>
+        </div>
+    `;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function quayLaiDanhSachDeDoc() {
+  const playContainer = document.getElementById("vstep-reading-play-screen");
+  if (playContainer) playContainer.style.display = "none";
+
+  const danhSachDe = document.getElementById("tieng-anh-dau-vao");
+  if (danhSachDe) danhSachDe.style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function nopBaiDocVaXemKetQua(examId) {
+  const exam = vstepReadingExams[examId];
+  if (!exam) return;
+
+  let totalQuestions = 0;
+  let correctCount = 0;
+  let resultsHtml = "";
+
+  exam.parts.forEach((part) => {
+    part.questions.forEach((q) => {
+      totalQuestions++;
+      const selectedInput = document.querySelector(
+        `input[name="doc_${examId}_${q.id}"]:checked`,
+      );
+      const userAnswer = selectedInput ? selectedInput.value : null;
+      const isCorrect = userAnswer === q.correct;
+
+      if (isCorrect) correctCount++;
+
+      let optionsDisplay = "";
+      for (let key in q.options) {
+        let color = "#333";
+        let fontWeight = "normal";
+        let bgStyle = "transparent";
+
+        if (key === q.correct) {
+          color = "#28a745";
+          fontWeight = "bold";
+          bgStyle = "#e8f5e9";
+        } else if (key === userAnswer && !isCorrect) {
+          color = "#dc3545";
+          fontWeight = "bold";
+          bgStyle = "#ffebee";
+        }
+
+        optionsDisplay += `<div style="padding: 4px 8px; background: ${bgStyle}; color: ${color}; font-weight: ${fontWeight}; border-radius: 4px;">${key}. ${q.options[key]} ${key === q.correct ? " (Đáp án đúng)" : ""} ${key === userAnswer && !isCorrect ? " (Bạn chọn sai)" : ""}</div>`;
+      }
+
+      resultsHtml += `
+                <div style="background: #fff; border: 1px solid ${isCorrect ? "#28a745" : "#dc3545"}; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: ${isCorrect ? "#28a745" : "#dc3545"};">
+                        Question ${q.id} - ${isCorrect ? "✅ Đúng (+1 điểm)" : "❌ Sai"}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;">
+                        ${optionsDisplay}
+                    </div>
+                    <div style="background: #f1f3f5; border-left: 4px solid #17a2b8; padding: 10px; font-size: 14px; color: #333; border-radius: 0 4px 4px 0; line-height: 1.5;">
+                        <strong>💡 Lời giải chi tiết:</strong><br>${q.explanation}
+                    </div>
+                </div>
+            `;
+    });
+  });
+
+  const finalScore = ((correctCount / totalQuestions) * exam.points).toFixed(2);
+
+  let playContainer = document.getElementById("vstep-reading-play-screen");
+  playContainer.innerHTML = `
+        <button onclick="quayLaiDanhSachDeDoc()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">← Quay lại danh sách đề</button>
+        
+        <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 25px;">
+            <h2 style="margin-top: 0; color: #0d47a1;">📊 KẾT QUẢ BÀI ĐỌC: ${exam.title}</h2>
+            <div style="font-size: 28px; font-weight: bold; color: #1565c0; margin: 15px 0;">
+                ${finalScore} / ${exam.points} Điểm
+            </div>
+            <p style="font-size: 16px; color: #333; margin: 0;">
+                Số câu đúng: <strong>${correctCount} / ${totalQuestions}</strong> câu.
+            </p>
+        </div>
+
+        <h3 style="color: #132c63; margin-bottom: 15px;">🔍 Chi tiết đáp án và Lời giải:</h3>
+        <div>${resultsHtml}</div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="moChiTietDeDoc('${examId}')" style="background: #007bff; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;">
+                🔄 Làm Lại Bài Đọc Này
+            </button>
+        </div>
+    `;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function dangNhapAdmin() {
+  let email = document.getElementById("admin-email").value.trim();
+  let password = document.getElementById("admin-password").value.trim();
+
+  if (!email || !password) {
+    alert("Vui lòng nhập đầy đủ email và mật khẩu!");
+    return;
+  }
+
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      soLanSaiAdmin = 0;
+      currentStudent.name = "trung_admin";
+      currentStudent.id = "7277979906";
+      localStorage.setItem(
+        "current_logged_student",
+        JSON.stringify(currentStudent),
+      );
+
+      // 🆕 Lưu dấu hiệu đã xác thực admin thành công 1 lần
+      localStorage.setItem("admin_verified_uid", userCredential.user.uid);
+
+      hienThiGiaoDienTaiKhoan();
+      alert("✅ Đăng nhập Admin thành công!");
+      dongAdminLoginBox();
+      document.getElementById("welcome-screen").style.display = "none";
+      checkAdminPermission();
+      updateOnlineStatus();
+      renderThreads();
+    })
+    .catch((error) => {
+      alert("❌ Sai email hoặc mật khẩu admin!");
+      console.error(error.code, error.message);
+    });
+}
+
+function dongAdminLoginBox() {
+  document.getElementById("admin-email").value = "";
+  document.getElementById("admin-password").value = "";
+  document.getElementById("admin-login-box").style.display = "none";
+}
+
+// Mở khung đăng nhập admin bằng tổ hợp phím bí mật Ctrl + Alt + A
+document.addEventListener("keydown", function (e) {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "a") {
+    let box = document.getElementById("admin-login-box");
+    if (box) box.style.display = "block";
+  }
+});
+// 🛡️ Hàm chống XSS: chuyển ký tự đặc biệt thành dạng an toàn trước khi hiển thị
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+// 🧩 Hàm dựng khung Part 2 dạng "Thông báo" (2 cột, có khung viền, giữ đúng bố cục đề gốc)
+function renderNoticesLayout(data) {
+  let leftHtml = `
+    <div style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #ccc;">
+      <div style="font-style: italic; font-weight: bold; margin-bottom: 4px;">Example:</div>
+      <div style="margin-bottom: 4px;">${escapeHtml(data.example.num)}. ${escapeHtml(data.example.text)}</div>
+      <div style="background: #ffe9c7; padding: 4px 8px; font-weight: bold; display: inline-block;">Answer sheet: ${escapeHtml(data.example.answer)}</div>
+    </div>
+  `;
+
+  data.leftItems.forEach((item) => {
+    leftHtml += `<div style="margin-bottom: 10px;"><b>${escapeHtml(item.num)}.</b> ${escapeHtml(item.text)}</div>`;
+  });
+
+  let rightHtml = "";
+  data.rightNotices.forEach((notice) => {
+    let linesHtml = notice.lines
+      .map((line) => `<div>${escapeHtml(line)}</div>`)
+      .join("");
+    rightHtml += `
+      <div style="margin-bottom: 12px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 2px;">${escapeHtml(notice.letter)}</div>
+        <div style="border: 1px solid #999; padding: 10px; text-align: center; font-size: 14px; background: #fdfdfd;">
+          ${linesHtml}
+        </div>
+      </div>
+    `;
+  });
+
+  return `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; background: #fff; padding: 20px; border-radius: 8px;">
+      <div style="font-size: 15px; line-height: 1.6;">${leftHtml}</div>
+      <div>${rightHtml}</div>
+    </div>
+  `;
+}
+// 🧩 Hàm dựng khung Part 3 dạng "Quảng cáo + Email + Ghi chú" giữ đúng bố cục đề gốc
+function renderAdEmailLayout(data) {
+  let posterLinesHtml = data.poster.lines
+    .map((line) => `<div style="margin-bottom: 6px;">${escapeHtml(line)}</div>`)
+    .join("");
+
+  let posterHtml = `
+    <div style="border: 1px solid #999; padding: 15px; text-align: center; background: #fdfdfd;">
+      <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${escapeHtml(data.poster.logoText)}</div>
+      ${data.poster.logoTagline ? `<div style="font-style: italic; font-size: 12px; color: #666; margin-bottom: 10px;">${escapeHtml(data.poster.logoTagline)}</div>` : ""}
+      ${posterLinesHtml}
+    </div>
+  `;
+
+  let fromToHtml = "";
+  if (data.email.from || data.email.to) {
+    fromToHtml = `
+      <div style="margin-bottom: 10px;">
+        ${data.email.from ? `<div><b>From:</b> ${escapeHtml(data.email.from)}</div>` : ""}
+        ${data.email.to ? `<div><b>To:</b> ${escapeHtml(data.email.to)}</div>` : ""}
+      </div>
+    `;
+  }
+
+  let emailParaHtml = (data.email.paragraphs || [])
+    .map((p) => `<div style="margin-bottom: 10px;">${escapeHtml(p)}</div>`)
+    .join("");
+
+  let emailHtml = `
+    <div style="border: 1px solid #999; padding: 15px; background: #fdfdfd; font-size: 14px; line-height: 1.6;">
+      ${fromToHtml}
+      ${data.email.greeting ? `<div style="margin-bottom: 10px;">${escapeHtml(data.email.greeting)}</div>` : ""}
+      ${emailParaHtml}
+    </div>
+  `;
+
+  let notesItemsHtml = data.notes.items
+    .map(
+      (item) =>
+        `<div style="margin-bottom: 6px;"><b>${escapeHtml(item.num)}.</b> ${escapeHtml(item.label)} (${escapeHtml(item.num)}) .....</div>`,
+    )
+    .join("");
+
+  let notesHtml = `
+    <div style="border: 1px solid #999; padding: 20px; background: #fdfdfd; margin-top: 20px;">
+      <div style="font-weight: bold; margin-bottom: 10px;">${escapeHtml(data.notes.title)}</div>
+      ${data.notes.date ? `<div style="color: #0058f0; margin-bottom: 6px;"><b>Date:</b> ${escapeHtml(data.notes.date)}</div>` : ""}
+      ${data.notes.subtitle ? `<div style="color: #333; font-weight: 600; margin-bottom: 4px;">${escapeHtml(data.notes.subtitle)}</div>` : ""}
+      ${data.notes.subtitle2 ? `<div style="color: #0058f0; margin-bottom: 10px;">${escapeHtml(data.notes.subtitle2)}</div>` : ""}
+      <div style="color: #0058f0; font-size: 14px;">${notesItemsHtml}</div>
+    </div>
+  `;
+
+  return `
+    <div style="background: #fff; padding: 20px; border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        ${posterHtml}
+        ${emailHtml}
+      </div>
+      ${notesHtml}
+    </div>
+  `;
+}
+// 🧩 Hàm dựng khung Part 3 dạng "Hai email song song" (không có poster/notes riêng)
+function renderTwoEmailsLayout(data) {
+  function renderOneEmail(email) {
+    let paraHtml = email.paragraphs
+      .map((p) => `<div style="margin-bottom: 10px;">${escapeHtml(p)}</div>`)
+      .join("");
+    return `
+      <div style="border: 1px solid #999; padding: 15px; background: #fdfdfd; font-size: 14px; line-height: 1.6;">
+        <div><b>To:</b> ${escapeHtml(email.to)}</div>
+        <div style="margin-bottom: 10px;"><b>From:</b> ${escapeHtml(email.from)}</div>
+        ${paraHtml}
+      </div>
+    `;
+  }
+
+  return `
+    <div style="background: #fff; padding: 20px; border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        ${renderOneEmail(data.email1)}
+        ${renderOneEmail(data.email2)}
+      </div>
+    </div>
+  `;
+}
+// 🔧 Kéo admin-login-box ra khỏi videoModal (nó đang bị lồng nhầm bên trong .modal có display:none)
+document.addEventListener("DOMContentLoaded", function () {
+  let adminBox = document.getElementById("admin-login-box");
+  if (adminBox) {
+    document.body.appendChild(adminBox); // chuyển thành con trực tiếp của <body>
+  }
+});
+// 📊 Tăng lượt xem chi tiết cho 1 sản phẩm
+function tangLuotXemSanPham(productKey) {
+  let ref = database.ref("cho_phenikaa/" + productKey + "/luotXem");
+  ref.transaction((currentValue) => {
+    return (currentValue || 0) + 1;
+  });
+}
+function loadChoPhenikaaStats() {
+  let box = document.getElementById("cho-phenikaa-stats-box");
+  if (!box) return;
+
+  database.ref("cho_phenikaa").on("value", (snapshot) => {
+    let data = snapshot.val();
+    if (!data) {
+      box.innerHTML = `<p style="color: #777; text-align: center; margin: 0;">Chưa có sản phẩm nào.</p>`;
+      return;
+    }
+
+    // Chuyển thành mảng và sắp xếp theo lượt xem giảm dần
+    let list = Object.keys(data).map((key) => ({
+      key: key,
+      ten: data[key].ten || "Không tên",
+      luotXem: data[key].luotXem || 0,
+      nguoiDang: data[key].nguoiDang || "Ẩn danh",
+    }));
+    list.sort((a, b) => b.luotXem - a.luotXem);
+
+    let html = `<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <thead>
+        <tr style="background: #e9ecef; text-align: left;">
+          <th style="padding: 8px;">Tên sản phẩm</th>
+          <th style="padding: 8px;">Người đăng</th>
+          <th style="padding: 8px; text-align: center;">Lượt xem</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    list.forEach((item) => {
+      html += `<tr style="border-bottom: 1px solid #dee2e6;">
+        <td style="padding: 8px;">${escapeHtml(item.ten)}</td>
+        <td style="padding: 8px; color: #666;">${escapeHtml(item.nguoiDang)}</td>
+        <td style="padding: 8px; text-align: center; font-weight: bold; color: #007bff;">${item.luotXem}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    box.innerHTML = html;
+  });
+}
 // Gọi khởi chạy khi mở tab VSTEP B1 (đảm bảo trong hàm showTab của anh đã gọi initVstepSystem hoặc renderVstepQuestion)
 renderVstepQuestion(0);

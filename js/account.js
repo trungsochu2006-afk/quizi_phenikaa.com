@@ -28,7 +28,6 @@ function submitStudentInfo() {
   let nameInput = document.getElementById("student-name").value.trim();
   let idInput = document.getElementById("student-id").value.trim();
 
-  // 1. Kiểm tra trước, nếu sai thì chặn luôn không cho làm gì cả
   if (nameInput === "" || idInput === "") {
     alert(
       "Vui lòng nhập đầy đủ Họ tên và Mã số sinh viên trước khi vào học nhé!",
@@ -36,25 +35,25 @@ function submitStudentInfo() {
     return;
   }
 
-  // 2. Gán dữ liệu vào object rồi mới làm tiếp
+  // 🔐 Nếu gõ đúng thông tin admin quen thuộc, chuyển sang khung đăng nhập admin thật
+  if (idInput === "7277979906" && nameInput.toLowerCase() === "trung_admin") {
+    document.getElementById("admin-login-box").style.display = "block";
+    return; // dừng lại, không cho vào bằng đường học viên thường
+  }
+
   currentStudent.name = nameInput;
   currentStudent.id = idInput;
-
-  // 3. Lưu localStorage
   localStorage.setItem(
     "current_logged_student",
     JSON.stringify(currentStudent),
   );
 
-  // 4. Cập nhật giao diện và ẩn màn hình đăng nhập
   hienThiGiaoDienTaiKhoan();
   document.getElementById("welcome-screen").style.display = "none";
 
-  // 5. GỌI HÀM ONLINE VÀ RENDER SAU KHI ĐÃ CÓ DỮ LIỆU CHÍNH XÁC
   updateOnlineStatus();
   renderThreads();
 
-  // 🌟 THÊM ĐOẠN NÀY VÀO ĐÂY: Ghi nhận 1 lượt truy cập hệ thống vào Firebase cho Admin Thống kê
   if (typeof logUserAccessActivity === "function") {
     logUserAccessActivity();
   }

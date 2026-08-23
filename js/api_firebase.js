@@ -14,3 +14,33 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const database = firebase.database();
+// 🔐 Đăng nhập ẩn danh ngay khi tải trang để có UID xác thực cho Rules
+// 🔐 Đợi Firebase tự khôi phục phiên đăng nhập đã lưu (nếu có) trước khi quyết định có cần đăng nhập ẩn danh hay không
+window.firebaseUID = null;
+let daKiemTraPhienDauTien = false;
+
+firebase.auth().onAuthStateChanged((user) => {
+  if (!daKiemTraPhienDauTien) {
+    daKiemTraPhienDauTien = true;
+    if (!user) {
+      // Chỉ đăng nhập ẩn danh nếu KHÔNG có phiên nào được khôi phục (kể cả admin)
+      firebase
+        .auth()
+        .signInAnonymously()
+        .catch((error) => {
+          console.error("Lỗi đăng nhập ẩn danh:", error.code, error.message);
+        });
+    }
+  }
+
+  if (user) {
+    window.firebaseUID = user.uid;
+    console.log(
+      "✅ Đã xác thực, UID:",
+      user.uid,
+      user.isAnonymous ? "(ẩn danh - học viên)" : "(admin thật)",
+    );
+  } else {
+    window.firebaseUID = null;
+  }
+});
