@@ -34,7 +34,13 @@ function submitStudentInfo() {
     );
     return;
   }
-
+  // 🔥 Chặn ngay từ cửa: Cấm đứa nào dùng tên admin nếu không phải MSSV thật của m
+  if (nameInput.toLowerCase() === "trung_admin" && idInput !== "7277979906") {
+    alert(
+      "⚠️ Tên này thuộc về quản trị viên hệ thống, bạn không được phép sử dụng!",
+    );
+    return;
+  }
   // 🔐 Nếu gõ đúng thông tin admin quen thuộc, chuyển sang khung đăng nhập admin thật
   if (idInput === "7277979906" && nameInput.toLowerCase() === "trung_admin") {
     document.getElementById("admin-login-box").style.display = "block";

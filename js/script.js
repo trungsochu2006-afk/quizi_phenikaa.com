@@ -817,10 +817,20 @@ function hienThiGiaoDienTaiKhoan() {
 function luuThayDoiTaiKhoan() {
   let newName = document.getElementById("menu-input-ten").value.trim();
   let newId = document.getElementById("menu-input-mssv").value.trim();
+
   if (newName === "" || newId === "") {
     alert("Họ tên và MSSV không được để trống!");
     return;
   }
+
+  // 🔥 Đưa đoạn chặn tên admin lên đầu tiên để lọc ngay lập tức
+  if (newName.toLowerCase() === "trung_admin" && newId !== "7277979906") {
+    alert(
+      "⚠️ Tên này thuộc về quản trị viên hệ thống, bạn không được phép sử dụng!",
+    );
+    return;
+  }
+
   if (newId === "7277979906" && newName !== "trung_admin") {
     alert("Thông tin xác thực Admin không hợp lệ!");
     return;
@@ -1566,18 +1576,15 @@ function taiDanhSachSanPham() {
 
         let giaHienThi = formatTienTe(sp.gia);
 
-        // Kiểm tra quyền xóa: Nếu là Admin HOẶC là chính chủ người đăng bài
+        // 🔥 Chỉ check đúng MSSV thật của m hoặc ID tài khoản gốc, tuyệt đối không dùng tên hiển thị
+        let isAdmin =
+          currentId === "7277979906" || currentName === "trung_admin";
         let isOwner =
-          (sp.mssv && sp.mssv.trim() === currentId) ||
-          sp.nguoiDang === currentName;
-        let nutXoaHtml = "";
+          sp.mssv && sp.mssv.trim() === currentId && currentId !== "";
 
+        let nutXoaHtml = "";
         if (isAdmin || isOwner) {
-          nutXoaHtml = `
-          <button onclick="xoaSanPhamCho('${key}')" title="Xóa sản phẩm" style="position: absolute; top: 8px; right: 8px; background: rgba(220, 53, 69, 0.85); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-            ✕
-          </button>
-        `;
+          nutXoaHtml = `<button onclick="xoaSanPhamCho('${key}')" ...>✕</button>`;
         }
 
         card.innerHTML = `
