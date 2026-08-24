@@ -966,22 +966,31 @@ function capNhatAnhTatCaBaiDangCu(mssv, newAvatar) {
 }
 
 function dangXuatTaiKhoan() {
-  if (confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-    firebase
-      .auth()
-      .signOut()
-      .then(() => {
-        localStorage.removeItem("current_logged_student");
-        location.reload();
-      })
-      .catch((error) => {
-        console.error("Lỗi đăng xuất:", error.message);
-        localStorage.removeItem("current_logged_student");
-        location.reload();
-      });
-  }
-}
+  // 1. Xóa sạch thông tin tài khoản đang lưu trên trình duyệt
+  localStorage.removeItem("phenikaa_student_name");
+  localStorage.removeItem("phenikaa_student_id");
 
+  // Hoặc quét sạch sành sanh cho chắc cú:
+  // localStorage.clear();
+
+  // 2. Hiện lại màn hình đăng nhập (welcome-screen) ngay lập tức
+  const welcomeScreen = document.getElementById("welcome-screen");
+  if (welcomeScreen) {
+    welcomeScreen.style.display = "flex"; // hoặc block tùy CSS của m
+  }
+
+  // 3. Đóng cái menu tài khoản nhỏ đang thả xuống (nếu có)
+  const menuTaiKhoan = document.getElementById("menu-tha-tai-khoan");
+  if (menuTaiKhoan) {
+    menuTaiKhoan.style.display = "none";
+  }
+
+  // Xóa trắng ô input đăng nhập (nếu cần)
+  if (document.getElementById("student-name"))
+    document.getElementById("student-name").value = "";
+  if (document.getElementById("student-id"))
+    document.getElementById("student-id").value = "";
+}
 // =========================================
 // 👑 5. BANNER CAROUSEL HOẠT ĐỘNG THÔNG MINH
 // =========================================
@@ -2892,5 +2901,48 @@ function loadChoPhenikaaStats() {
     box.innerHTML = html;
   });
 }
+function renderLuoiSanPham(danhSach = danhSachSanPham) {
+  const gridContainer = document.getElementById("luoiSanPham");
+  if (!gridContainer) return;
+
+  if (danhSach.length === 0) {
+    gridContainer.innerHTML =
+      "<p style='grid-column: 1/-1; text-align: center; color: #777;'>Không có sản phẩm nào.</p>";
+    return;
+  }
+
+  let htmlContent = "";
+  danhSach.forEach((item) => {
+    htmlContent += `
+      <div onclick="window.open('${item.link}', '_blank')" style="background: #fff; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; position: relative;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">
+        
+        <!-- Ảnh sản phẩm và nhãn giảm giá -->
+        <div style="width: 100%; height: 180px; position: relative; background: #f0f0f0;">
+          <img src="${item.anh}" style="width: 100%; height: 100%; object-fit: cover;" />
+          ${item.giamGia ? `<span style="position: absolute; top: 0; right: 0; background: rgba(255, 212, 36, 0.9); color: #ee4d2d; font-size: 11px; font-weight: bold; padding: 2px 5px; border-bottom-left-radius: 4px;">${item.giamGia}</span>` : ""}
+        </div>
+
+        <!-- Thông tin chi tiết sản phẩm -->
+        <div style="padding: 10px; display: flex; flex-direction: column; flex-grow: 1;">
+          <div style="font-size: 13px; line-height: 1.4; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 8px; color: #333;">
+            ${item.ten}
+          </div>
+          <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #ee4d2d; font-size: 16px; font-weight: bold;">${item.gia}</span>
+            <span style="font-size: 11px; color: #757575;">Đang bán</span>
+          </div>
+        </div>
+
+      </div>
+    `;
+  });
+
+  gridContainer.innerHTML = htmlContent;
+}
+
+// Tự động chạy khi tải trang xong
+document.addEventListener("DOMContentLoaded", () => {
+  renderLuoiSanPham();
+});
 // Gọi khởi chạy khi mở tab VSTEP B1 (đảm bảo trong hàm showTab của anh đã gọi initVstepSystem hoặc renderVstepQuestion)
 renderVstepQuestion(0);

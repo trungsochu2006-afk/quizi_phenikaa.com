@@ -1639,23 +1639,22 @@ label[for="thread-image"]:hover,
 }
 /* ==========================================
    📖 CẤU HÌNH CUỘN ĐỘC LẬP CHO PHẦN READING
-   ========================================== */
+/* ==========================================================
+   📖 CHỈ CẤU HÌNH ĐỘC LẬP CHO PHẦN READING VSTEP
+   ========================================================== */
 
-/* 1. Trên Máy Tính (PC): Chia 2 cột, mỗi cột tự cuộn độc lập */
-/* 1. Khung chứa 2 cột tổng thể: Cho dãn nở đều nhau theo chiều cao */
-/* 1. Khung tổng 2 cột: Ép chiều cao cố định để cả 2 có không gian cuộn */
+/* 1. MẶC ĐỊNH TRÊN MÁY TÍNH (PC): Chia 2 cột song song (Trái đọc, Phải câu hỏi) */
 #reading-layout-container .reading-split-grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   gap: 20px !important;
   align-items: stretch !important;
-  height: 75vh !important; /* 🔥 Cố định chiều cao tổng thể của cả 2 cột trên màn hình */
+  height: 75vh !important;
 }
 
-/* 2. Cột trái (Bài đọc): Trả lại thanh trượt độc lập, dài theo nội dung */
 #reading-layout-container .reading-text-pane {
-  height: 100% !important; /* Chiếm trọn 75vh của khung tổng */
-  overflow-y: auto !important; /* 🔥 Lấy lại thanh trượt cho bài đọc bên trái */
+  height: 100% !important;
+  overflow-y: auto !important;
   background: #fff;
   border: 1px solid #e1e4e8;
   border-radius: 12px;
@@ -1663,10 +1662,14 @@ label[for="thread-image"]:hover,
   box-sizing: border-box;
 }
 
-/* 3. Cột phải (Danh sách câu hỏi): Trả lại thanh trượt độc lập, ôm trọn 10 câu */
+/* ==========================================================
+   📜 THÊM THANH TRƯỢT RIÊNG CHO KHUNG CÂU HỎI READING
+   ========================================================== */
+
+/* 1. Trên máy tính (PC): Cột câu hỏi có thanh trượt riêng (đã có sẵn chiều cao 75vh từ khung tổng) */
 #reading-layout-container .reading-question-pane {
-  height: 100% !important; /* Chiếm trọn 75vh bằng tăm tắp cột trái */
-  overflow-y: auto !important; /* 🔥 Lấy lại thanh trượt dọc cho toàn bộ danh sách câu hỏi bên phải */
+  height: 100% !important;
+  overflow-y: auto !important; /* 🔥 Đảm bảo cột câu hỏi có thanh trượt riêng trên PC */
   display: flex;
   flex-direction: column;
   padding: 20px !important;
@@ -1674,40 +1677,31 @@ label[for="thread-image"]:hover,
   border: 1px solid #e1e4e8 !important;
   border-radius: 12px !important;
   box-sizing: border-box;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
-/* 4. Từng card câu hỏi bên trong */
-#reading-layout-container .vstep-question-card {
-  margin-bottom: 25px;
-  padding: 20px;
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  box-sizing: border-box;
-}
-/* 2. Trên Điện Thoại (Mobile): Chia thành 2 khối trên/dưới lướt độc lập */
+/* 2. Trên điện thoại (Mobile): Cố định chiều cao khung câu hỏi và bật thanh trượt nội bộ */
 @media screen and (max-width: 768px) {
   #reading-layout-container .reading-split-grid {
-    grid-template-columns: 1fr !important; /* Xếp dọc trên điện thoại */
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
     gap: 15px !important;
   }
 
-  /* Khung đề bài phía trên trên ĐT */
+  /* Khung bài đọc ở phía trên */
   #reading-layout-container .reading-text-pane {
-    height: 300px !important; /* Cố định chiều cao phần đề trên ĐT */
-    overflow-y: auto !important; /* Lướt độc lập phần đề */
+    height: 300px !important;
+    overflow-y: auto !important;
+    width: 100% !important;
   }
 
-  /* Khung câu hỏi phía dưới trên ĐT */
+  /* 🔥 Khung câu hỏi ở phía dưới: Cố định chiều cao và CÓ THANH TRƯỢT TRỰC TIẾP TRONG KHUNG */
   #reading-layout-container .reading-question-pane {
-    height: auto !important;
-  }
-
-  #reading-layout-container #reading-question-container,
-  #reading-layout-container .vstep-question-card {
-    max-height: 320px !important; /* Cố định chiều cao phần câu hỏi trên ĐT */
-    overflow-y: auto !important; /* Lướt độc lập phần câu hỏi */
+    height: 420px !important; /* Cố định chiều cao vừa vặn khung hình điện thoại */
+    max-height: 420px !important; /* Không cho nó phình to hơn */
+    overflow-y: auto !important; /* 👈 Tạo thanh trượt riêng cho phép lướt qua lại giữa các câu hỏi */
+    width: 100% !important;
+    padding: 15px !important;
   }
 }
 /* Thêm cái này vào file CSS của bạn */
@@ -1746,4 +1740,10 @@ label[for="thread-image"]:hover,
   #vstep-reading-play-screen div[style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
+}
+.shopee-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  padding: 10px 0;
 }

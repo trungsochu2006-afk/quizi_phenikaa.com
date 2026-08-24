@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QUIZI PHENIKAA</title>
     <link rel="stylesheet" href="CSS/style.css" />
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -57,7 +54,6 @@
       <div class="nav-links">
         <button onclick="showTab('home')">Trang chủ</button>
         <button onclick="showTab('quiz')">Câu Hỏi Trắc Nghiệm</button>
-        <button onclick="showTab('threads')">Thread phenikaa</button>
         <button onclick="showTab('cho-phenikaa-section')">Chợ Phenikaa</button>
         <button onclick="showTab('onthivstep')">VSTEP B1</button>
         <button onclick="showTab('tieng-anh-dau-vao')" style="background: #132c63; color: white;">Tiếng anh đầu vào</button>
@@ -760,43 +756,16 @@
       <div id="cho-phenikaa-tab">
         <div class="market-banner">
           <div class="banner-content">
-            <h1>🛒 Chợ Sinh Viên Phenikaa</h1>
+            <h1>🛒  Công ty TNHH 5 Thành Viên Phenikaa XsMax  </h1>
             <p>
-              Sàn giao dịch đồ cũ , dịch vụ in 3D (400đ/gram) 
+              Chuyên Nhận In 3D Mô Hình , Tranh Ảnh , Các Chi Tiết Đồ Án (Phá Giá Thị Trường 400đ/gram ). In đủ loại nhựa <br>
+              Hỗ Trợ Đồ Án Các Loại Đồ Án Kỹ Thuật (KO LÀM THUÊ) , Thiết Kế Các Chi Tiết Cơ Cấu Máy , Chế Tạo Robot , Gia Công Mạch PCB 1 Lớp <br>
+              Tuyển Các Bạn KOC/KOL Video , LiveStream (ƯU TIÊN SINH VIÊN PHENIKAA) . Shop Sẽ Set Hoa Hồng 15% cho các bạn . <br>
+              Chi Tiết Liên Hệ Mình Zalo/SĐT : 0825256206
             </p>
-            <button class="banner-btn" onclick="moModalDangSanPham()">
-              ➕ Đăng Bán Sản Phẩm
             </button>
           </div>
           <div class="banner-icon">🛍️</div>
-        </div>
-        <div style="margin-bottom: 20px; display: flex; gap: 10px">
-          <input
-            type="text"
-            id="timKiemSanPham"
-            placeholder="🔍 Tìm kiếm giáo trình, linh kiện, đồ cũ..."
-            style="
-              flex: 1;
-              padding: 10px 15px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              outline: none;
-            "
-          />
-          <button
-            onclick="moModalDangSanPham()"
-            style="
-              background: #28a745;
-              color: white;
-              border: none;
-              padding: 0 20px;
-              border-radius: 8px;
-              font-weight: bold;
-              cursor: pointer;
-            "
-          >
-            Đăng Bán Ngay
-          </button>
         </div>
         <div
           id="luoiSanPham"
@@ -997,248 +966,10 @@
                 </div>
             </div>
         </div>
-
+<!-- KHUNG HIỂN THỊ LƯỚI SẢN PHẨM -->
+<div id="luoiSanPham" class="shopee-product-grid"></div>
     </div>
 </div>
- <!-- thread -->
-  </div>
-    <div id="threads" class="section">
-      <div class="nenchonmon" style="max-width: 650px; margin: 20px auto">
-        <div class="mauchuquizi" style="margin-bottom: 15px">
-          THREAD PHENIKAA
-        </div>
-        <div
-          style="
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-          "
-        >
-          <textarea
-            id="thread-content"
-            placeholder="Phenikaa ơi, hôm nay có gì hot?..."
-            style="
-              width: 100%;
-              height: 80px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              padding: 10px;
-              font-family: inherit;
-              font-size: 15px;
-              resize: none;
-              outline: none;
-              box-sizing: border-box;
-            "
-          ></textarea>
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-top: 10px;
-            "
-          >
-            <label
-              style="
-                background: #f1f3f4;
-                padding: 8px 15px;
-                border-radius: 20px;
-                cursor: pointer;
-                font-size: 14px;
-                color: #555;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-              "
-            >
-              📷 Đăng ảnh
-              <input
-                type="file"
-                id="thread-image"
-                accept="image/*"
-                style="display: none"
-              />
-            </label>
-            <button
-              onclick="createNewPost()"
-              style="
-                background: #000;
-                color: white;
-                border: none;
-                padding: 8px 20px;
-                font-weight: bold;
-                border-radius: 20px;
-                cursor: pointer;
-              "
-            >
-              Đăng bài
-            </button>
-          </div>
-          <div
-            id="image-preview-name"
-            style="
-              font-size: 13px;
-              color: #28a745;
-              margin-top: 5px;
-              text-align: left;
-            "
-          ></div>
-        </div>
-        <div id="threads-list"></div>
-      </div>
-    </div>
-
-    <!-- Modal Đăng Bán Sản Phẩm -->
-    <div
-      id="modalDangSanPham"
-      style="
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-      "
-    >
-      <div
-        style="
-          background: white;
-          padding: 25px;
-          border-radius: 10px;
-          width: 400px;
-          max-width: 90%;
-        "
-      >
-        <h3 style="margin-top: 0; color: #333">📦 Đăng Sản Phẩm Mới</h3>
-
-        <input
-          type="text"
-          id="tenSanPham"
-          placeholder="Tên món đồ (Ví dụ: Giáo trình Triết học...)"
-          style="
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-          "
-        />
-
-        <input
-          type="text"
-          id="giaSanPham"
-          placeholder="Giá tiền (Ví dụ: 50.000đ)"
-          style="
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-          "
-        />
-
-        <!-- Ô nhập Link URL (Shopee, Facebook, Google Drive...) -->
-        <input
-          type="text"
-          id="linkChiTietSanPham"
-          placeholder="🔗 Link URL chi tiết (Link Facebook, Shopee, Zalo...)"
-          style="
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-          "
-        />
-
-        <!-- Chọn ảnh từ máy (ưu tiên dùng, nếu không có sẽ tự lấy ảnh mặc định) -->
-        <div style="margin-bottom: 10px">
-          <label
-            style="
-              display: block;
-              background: #f1f3f4;
-              padding: 8px;
-              text-align: center;
-              border-radius: 5px;
-              cursor: pointer;
-              border: 1px dashed #bbb;
-              font-size: 13px;
-              color: #555;
-            "
-          >
-            📷 Hoặc chọn ảnh từ máy tính
-            <input
-              type="file"
-              id="anhSanPhamFile"
-              accept="image/*"
-              style="display: none"
-              onchange="chonAnhSanPham(this)"
-            />
-          </label>
-          <div
-            id="ten-file-anh"
-            style="
-              font-size: 11px;
-              color: #28a745;
-              margin-top: 3px;
-              font-weight: bold;
-            "
-          ></div>
-        </div>
-
-        <textarea
-          id="moTaSanPham"
-          placeholder="Mô tả chi tiết tình trạng món đồ..."
-          style="
-            width: 100%;
-            padding: 10px;
-            height: 70px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-          "
-        ></textarea>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end">
-          <button
-            onclick="dongModalDangSanPham()"
-            style="
-              background: #ccc;
-              border: none;
-              padding: 8px 15px;
-              border-radius: 5px;
-              cursor: pointer;
-            "
-          >
-            Hủy
-          </button>
-          <button
-            onclick="xacNhanDangSanPham()"
-            style="
-              background: #28a745;
-              color: white;
-              border: none;
-              padding: 8px 15px;
-              border-radius: 5px;
-              cursor: pointer;
-              font-weight: bold;
-            "
-          >
-            Đăng Bài
-          </button>
-        </div>
-      </div>
-    </div>
     <div class="modal" id="videoModal">
       <button class="back-btn" onclick="closeVideo()">← Trang chủ</button>
       <video
@@ -1308,6 +1039,6 @@
     <script src="js/quiz.js"></script>
     <script src="js/social_thread.js"></script>
     <script src="js/script.js"></script>
-    <script src="cho_phenikaa.js"></script>
+    <script src="js/sp.js"></script>
   </body>
 </html>
