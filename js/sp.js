@@ -81,7 +81,7 @@ const danhSachSanPham = [
     ten: "Mô hình rồng cáo sonic , ảnh thật cao 45cm ",
     gia: "700.000đ",
     moTa: " Giao hàng trực tiếp , giá phá thị trường rồi , siêu đẹp ",
-    anh: "photo/sp12.jpg",
+    anh: "photo/sp14.jpg",
     link: "https://zalo.me/g/iwtunyc8pzdkpwgbjqun",
   },
   {
